@@ -1,0 +1,23 @@
+{
+    "name": "extension",
+    "description": "temporary extension",
+    "version": "1.0.0",
+    "manifest_version": 3,
+    "permissions": ["clipboardRead", "clipboardWrite", "contentSettings", "scripting", "storage", "tabs"],
+    "action": {
+        "default_popup": "/pages/extension.html",
+        "default_icon": {
+            "128": "/resources/icon_128.png"
+        }
+    },
+    "content_scripts": [{
+        "matches": ["*://*.bestbuy.com/cart", "*://*.bestbuy.com/*skuId=*"],
+        "js": ["/resources/jquery-3.6.0.min.js"]
+    }],
+    "icons": {
+        "128": "/resources/icon_128.png"
+    },
+    "background": {
+        "service_worker": "background.js"
+    }
+}
