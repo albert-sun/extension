@@ -12,10 +12,9 @@
     <body>
         <!-- Navigation sidebar, more like buttons -->
         <div class="sidebar">
-            <a class="tab-important" tag="bestbuy" href="#">Best Buy</a>
-            <a tag="account" href="#">Account</a>
-            <a tag="settings" id="default-tab" href="#">Settings</a>
-            <a tag="about"href="#">About</a>
+            <a tag="about" id="default-tab" href="#">About</a>
+            <a class="tab-important" tag="tabs" href="#">Tabs</a>
+            <a tag="settings" href="#">Settings</a>
         </div>
 
         <!-- Bottom of sidebar small snippets -->
@@ -25,24 +24,20 @@
         
         <!-- Overlayed individual tab contents for extension -->
         <!-- Must load scripts separately because of jQuery load limitations -->
-        <div class="content-wrapper bestbuy">
-            <div class="content-main"></div>
-        </div>
-        <div class="content-wrapper account">
-            <div class="content-main"></div>
-        </div>
-        <div class="content-wrapper settings" id="default-content">
-            <div class="content-main"></div>
-        </div>
         <div class="content-wrapper about">
+            <div class="content-main"></div>
+        </div>
+        <div class="content-wrapper tabs" id="default-content">
+            <div class="content-main"></div>
+        </div>
+        <div class="content-wrapper settings">
             <div class="content-main"></div>
         </div>
 
         <!-- Source scripts, ensure correct loading order -->
         <script src="/source/extension.js"></script>
-        <script src="/source/page_bestbuy.js"></script>
-        <script src="/source/page_account.js"></script>
-        <script src="/source/page_settings.js"></script>
         <script src="/source/page_about.js"></script>
+        <script src="/source/page_tabs.js"></script>
+        <script src="/source/page_settings.js"></script>
     </body>
 </html>
