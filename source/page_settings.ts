@@ -63,7 +63,7 @@ async function populateSettings() {
                 settingRight.onclick = function() {
                     broadcastInstruction(setting.instruction as string)
                 };
-            } else if(setting.type === "checkbox") {
+            } else if(setting.type === "slideSwitch") {
                 // Checkbox, acts much like regular input w/ different attributes
                 settingRight = document.createElement("label");
                 settingRight.classList.add("switch");
