@@ -1,16 +1,17 @@
 import { browser } from "webextension-polyfill-ts";
+import { retrieveSettings } from "./utilities";
 import { defaultSettings } from "./constants";
-import { AllSettings, Setting } from "./structure";
 
 // Asynchronously updates extension storage with given setting and notify tabs of update
 // Issue with notifying to pages not reloaded when updating extension source?
-async function updateSetting(settingKey: string, settingValue: any, notify = false) {
+async function updateSetting(settingKey: string, settingValue: any, notify = true) {
     await browser.storage.local.set({ [`setting-${settingKey}`]: settingValue });
     if(notify === true) { // Enabled by default for convenience
         const tabs = await browser.tabs.query({});
-        const message = { "instruction": "updatedSetting", "arguments": [`${settingKey}`, settingValue] };
+        const message = { "instruction": "updatedSetting", "arguments": [settingKey, settingValue] };
         for(const tab of tabs) { // Notify individual tabs of updated setting
-            browser.tabs.sendMessage(tab.id as number, message);
+            // Polyfill throws error if missing listener, ignore
+            browser.tabs.sendMessage(tab.id as number, message); 
         }
     }
 }
@@ -25,35 +26,12 @@ async function broadcastInstruction(instruction: string, args = []) {
     }
 }
 
-// Asynchronously retrieve all extension settings from Storage API
-// Alright to modify because scoped only within extension popup...?
-export async function getAllSettings(): Promise<AllSettings> {
-    const currentSettings = defaultSettings; // Can I modify defaultSettings?
-
-    // Iterate through all categories and individual settings
-    for(const [settingsCategory, settings] of Object.entries(currentSettings)) {
-        for(const setting of settings) {
-            // Ignore settings that aren't actually settings (buttons, etc.)
-            if(setting.value === undefined) {
-                continue;
-            }
-
-            // Replace with value from storage if modified exists, otherwise keep default
-            const settingKey = `${settingsCategory}-${setting.key}`;
-            const storageResult = await browser.storage.local.get(`setting-${settingKey}`);
-            if(storageResult[`setting-${settingKey}`] !== undefined) { 
-                setting.value = storageResult[`setting-${settingKey}`];
-            }
-        }
-    }
-
-    return currentSettings;
-}
-
 // Retrieve existing settings from storage and populate settings table for category
 async function populateSettings() {
-    // Cache existing settings from storage 
-    const currentSettings = await getAllSettings();
+    const currentSettings = defaultSettings; // Before modification
+    for(const [settingsCategory, _] of Object.entries(currentSettings)) {
+        currentSettings[settingsCategory] = await retrieveSettings(settingsCategory);
+    }
 
     // Populate all settings categories tables within settings page
     for(const [settingsCategory, _] of Object.entries(defaultSettings)) {

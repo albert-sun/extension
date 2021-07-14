@@ -13,3 +13,10 @@ export interface Message {
     instruction: string,
     arguments: any[],
 }
+
+export interface SavedItem {
+    wrapper: HTMLElement,
+    description: string,
+    addButton: HTMLButtonElement,
+    sku: string,
+}

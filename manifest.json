@@ -1,8 +1,10 @@
 {
     "name": "extension",
-    "description": "temporary extension",
     "version": "1.0.0",
+    "author": "Albert Sun",
+    "description": "temporary extension",
     "manifest_version": 3,
+    "minimum_chrome_version": "91",
     "permissions": ["clipboardRead", "clipboardWrite", "contentSettings", "scripting", "storage", "tabs"],
     "action": {
         "default_popup": "/pages/extension.html",
@@ -11,13 +13,17 @@
         }
     },
     "content_scripts": [{
-        "matches": ["*://*.bestbuy.com/cart", "*://*.bestbuy.com/*skuId=*"],
-        "js": ["/resources/jquery-3.6.0.min.js"]
+        "matches": ["*://*.bestbuy.com/cart"],
+        "js": ["/source/bestbuy_cart.js", "/vendor.js"]
+    }, {
+        "matches": ["*://*.bestbuy.com/*skuId=*"],
+        "js": ["/source/bestbuy_product.js", "/vendor.js"]
     }],
     "icons": {
         "128": "/resources/icon_128.png"
     },
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     }
 }
