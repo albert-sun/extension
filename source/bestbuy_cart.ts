@@ -3,6 +3,8 @@ import { retrieveSettingsKV, sleep } from "./utilities";
 import { defaultSettings } from "./constants";
 import { SavedItem, Setting } from "./structure";
 
+declare var __META_LAYER_META_DATA: any;
+
 let categorySettings: { [index: string]: any } = {}; 
 let updatedSettingHandlers: { [index: string]: Function } = {
     "notificationSoundURL": async function() { 
@@ -73,6 +75,25 @@ async function savedCartRuntime() {
     }; // "Last updated" timestamp for extension
     await browser.storage.local.set({ "bestbuy-queueInfo": queueInfo });
     browser.runtime.sendMessage({ "instruction": "updatedQueueInfo", "arguments": [queueInfo] });
+
+    // Attach setter to cart order to receive callback whenever contents change
+    __META_LAYER_META_DATA._order = __META_LAYER_META_DATA.order;
+    Object.defineProperty(__META_LAYER_META_DATA, "order", {
+        get: function() { return __META_LAYER_META_DATA._order; } ,
+        set: function(newOrder) {
+            try { // Sometimes has issues with first set, wrap in try/catch?
+                const oldCartLength = __META_LAYER_META_DATA.order ? __META_LAYER_META_DATA.order.lineItems.length : 0;
+                const newCartLength = newOrder.lineItems.length;
+
+                // Compare cart lengths to check whether item added
+                if(newCartLength > oldCartLength) {
+                    notificationSound.play();
+                }
+            } catch(err) { console.error(err); }
+
+            __META_LAYER_META_DATA._order = newOrder;
+        }
+    });
 
     await savedCartRuntime(); // Actual runtime for cart stuff
 }());
