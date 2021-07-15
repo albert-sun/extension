@@ -7,8 +7,9 @@ export const defaultSettings: AllSettings = {
         { key: "autoClickWhitelisted", description: "Automatically click whitelisted ATC buttons", type: "slideSwitch", value: true },
         { key: "stopClickCartOccupied", description: "Stop automatic clicking when cart occupied", type: "slideSwitch", value: true },
         { key: "globalPollingInterval", description: "Global content script polling interval", type: "number", extraText: "ms", value: 100 },
-        { key: "successiveClickTimeout", description: "Timeout between successive button clicks", type: "number", extraText: "ms", value: 2500 },
+        { key: "successiveClickTimeout", description: "Timeout between clicking different button", type: "number", extraText: "ms", value: 2500 },
         { key: "notificationSoundURL", description: "Custom notification sound URL (mp3 hotlink)", type: "text", value: "https://github.com/albert-sun/tamper-scripts/blob/main/resources/notification.mp3?raw=true" },
-        { key: "testNotificationSound", description: "Play current notification sound", type: "button", instruction: "testNotificationSound" },
+        { key: "whitelistKeywords", description: "Comma-separated whitelisted keywords", type: "text", value: "3060,3060ti,3060 ti,3070,3070ti,3070 ti,3080,3080ti,3080 ti,3090"},
+        // { key: "testNotificationSound", description: "Play current notification sound", type: "button", instruction: "testNotificationSound" },
     ]
 };

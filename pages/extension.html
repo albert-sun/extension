@@ -13,7 +13,7 @@
         <!-- Navigation sidebar, more like buttons -->
         <div class="sidebar">
             <a tag="about" id="default-tab" href="#">About</a>
-            <a class="tab-important" tag="tabs" href="#">Tabs</a>
+            <a class="tab-important" tag="logging" href="#">Logging</a>
             <a tag="settings" href="#">Settings</a>
         </div>
 
@@ -24,10 +24,10 @@
         
         <!-- Overlayed individual tab contents for extension -->
         <!-- Must load scripts separately because of jQuery load limitations -->
-        <div class="content-wrapper about">
+        <div class="content-wrapper about" id="default-content">
             <div class="content-main"></div>
         </div>
-        <div class="content-wrapper tabs" id="default-content">
+        <div class="content-wrapper logging">
             <div class="content-main"></div>
         </div>
         <div class="content-wrapper settings">
@@ -37,7 +37,7 @@
         <!-- Source scripts, ensure correct loading order -->
         <script src="/source/extension.js"></script>
         <script src="/source/page_about.js"></script>
-        <script src="/source/page_tabs.js"></script>
+        <script src="/source/page_logging.js"></script>
         <script src="/source/page_settings.js"></script>
     </body>
 </html>

@@ -1,10 +1,10 @@
-import { browser, Runtime, Tabs } from "webextension-polyfill-ts";
+/*import { browser, Runtime, Tabs } from "webextension-polyfill-ts";
 import { defaultSettings } from "./source/constants";
 import { Message, Setting } from "./source/structure";
 
 console.log("registered!");
 
-/*// Asynchronous message handlers for performing various functions
+// Asynchronous message handlers for performing various functions
 // Performs Chrome API calls and middlemans communication between content script and extension popup
 const messageHandlers: { [index: string]: Function } = {
     "getSettings": async function(settingsCategory: string): Promise<{ [index: string]: Setting }> {

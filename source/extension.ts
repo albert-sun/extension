@@ -9,7 +9,7 @@ $("#version")[0].innerText = `Version ${manifestData.version}`;
 // Tab content HTML source mapping
 const pages: { [index: string]: string } = {
     "about": "/pages/about.html",
-    "tabs": "/pages/tabs.html",
+    "logging": "/pages/logging.html",
     "settings": "/pages/settings.html",
 }; 
 

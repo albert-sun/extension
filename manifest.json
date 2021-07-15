@@ -1,8 +1,8 @@
 {
-    "name": "extension",
-    "version": "1.0.0",
+    "name": "AutoGraphicsUtilities",
+    "version": "0.0.1",
     "author": "Albert Sun",
-    "description": "temporary extension",
+    "description": "Automated utilities for purchasing graphics cards",
     "manifest_version": 3,
     "minimum_chrome_version": "91",
     "permissions": ["clipboardRead", "clipboardWrite", "contentSettings", "scripting", "storage", "tabs"],
@@ -13,6 +13,9 @@
         }
     },
     "content_scripts": [{
+        "matches": ["*://*.bestbuy.com/cart", "*://*.bestbuy.com/*skuId=*"],
+        "js": ["/resources/jquery-3.6.0.min.js"]
+    }, {
         "matches": ["*://*.bestbuy.com/cart"],
         "js": ["/source/bestbuy_cart.js", "/vendor.js"]
     }, {

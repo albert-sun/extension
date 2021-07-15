@@ -54,7 +54,7 @@ async function populateSettings() {
             leftDescription.innerText = setting.description;
             const settingKey = `${settingsCategory}-${setting.key}`;
             let settingRight: HTMLAnchorElement | HTMLButtonElement | HTMLInputElement | HTMLLabelElement; 
-            if(setting.type === "button") {
+            /*if(setting.type === "button") {
                 // Button usually for testing, broadcasts specific instruction (empty arguments)
                 settingRight = document.createElement("a");
                 settingRight.classList.add("table-button");
@@ -63,7 +63,7 @@ async function populateSettings() {
                 settingRight.onclick = function() {
                     broadcastInstruction(setting.instruction as string)
                 };
-            } else if(setting.type === "slideSwitch") {
+            } else*/ if(setting.type === "slideSwitch") {
                 // Checkbox, acts much like regular input w/ different attributes
                 settingRight = document.createElement("label");
                 settingRight.classList.add("switch");
