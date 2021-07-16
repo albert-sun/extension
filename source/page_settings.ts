@@ -1,3 +1,4 @@
+import SimpleBar from "simplebar";
 import { browser } from "webextension-polyfill-ts";
 import { retrieveSettings } from "./utilities";
 import { defaultSettings } from "./constants";
@@ -101,4 +102,12 @@ async function populateSettings() {
     }
 }
 
-populateSettings();
+const pageName = "settings";
+
+// Page startup wrapper for loading content and scripting
+const pageWrapper = $(`.${pageName}`)[0];
+new SimpleBar(pageWrapper, { autoHide: false });
+const pageContent = $(pageWrapper).find(".content-main");
+pageContent.load(`/pages/${pageName}.html`, function() {
+    populateSettings();
+});

@@ -1,17 +1,9 @@
 import { browser } from "webextension-polyfill-ts";
-import SimpleBar from "simplebar";
 import $ from "jquery";
 
 // Show version info on bottom left corner from manifest
 const manifestData = browser.runtime.getManifest();
 $("#version")[0].innerText = `Version ${manifestData.version}`;
-
-// Tab content HTML source mapping
-const pages: { [index: string]: string } = {
-    "about": "/pages/about.html",
-    "logging": "/pages/logging.html",
-    "settings": "/pages/settings.html",
-}; 
 
 // Tab clicking and "switching" functionality
 let activeTab: HTMLElement;
@@ -32,14 +24,6 @@ $(".sidebar").find("a").toArray().forEach(function(tabButton: HTMLElement) {
         activeContent = tabContent;
     };
 });
-
-// Load HTML for overlay content in advance
-for(const [pageTag, _] of Object.entries(pages)) {
-    // Also initialize SimpleBar for each div, too lazy to destroy and remake
-    const content = $(`.${pageTag}`)[0];
-    new SimpleBar(content, { autoHide: false });
-    $(content).find(".content-main").load(pages[pageTag]);
-}
 
 // Set default tab to "About"
 activeTab = $("#default-tab")[0];

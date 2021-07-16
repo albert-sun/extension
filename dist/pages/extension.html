@@ -1,6 +1,9 @@
 <!-- About and versioning page, default on popup -->
 
 <!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+</head>
 <html>
     <link rel="stylesheet" href="/resources/extension.css">
     <link rel="stylesheet" href="/resources/content.css">
@@ -15,6 +18,7 @@
             <a tag="about" id="default-tab" href="#">About</a>
             <a class="tab-important" tag="logging" href="#">Logging</a>
             <a tag="settings" href="#">Settings</a>
+            <a tag="changelog" href="#">Changelog</a>
         </div>
 
         <!-- Bottom of sidebar small snippets -->
@@ -33,11 +37,15 @@
         <div class="content-wrapper settings">
             <div class="content-main"></div>
         </div>
+        <div class="content-wrapper changelog">
+            <div class="content-main"></div>
+        </div>
 
         <!-- Source scripts, ensure correct loading order -->
         <script src="/source/extension.js"></script>
         <script src="/source/page_about.js"></script>
         <script src="/source/page_logging.js"></script>
         <script src="/source/page_settings.js"></script>
+        <script src="/source/page_changelog.js"></script>
     </body>
 </html>

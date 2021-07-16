@@ -1,3 +1,9 @@
+// Changelogs for individual versions
+export interface Changelog {
+    version: string,
+    bulletpoints: string[],
+}
+
 // Settings maintained in storage and passed between background, extension, and content scripts
 export interface AllSettings { [index: string]: Setting[] };
 export interface Setting {

@@ -31,8 +31,7 @@ let notificationSound: HTMLAudioElement;
 let whitelistedKeywords: string[] = []; // Lowercase
 let savedItems: SavedItem[] = [];
 let previousCartLength = 0; // Cannot access DOM global variables, improvise
-let lastClickedButton = 0; // Unix timestamp for last time button clicked
-let lastClickedSKU = ""; // Last clicked SKU, fixed 5x timeout multiplier
+let lastClickedTime = 0; // Unix timestamp for last time button clicked
 
 // Cart page saved items runtime - periodically polls elements for color and clickability
 async function savedCartRuntime() {
@@ -47,6 +46,11 @@ async function savedCartRuntime() {
 
     // Keep loop running while page is loaded
     while(true) {
+        // Wait until spinner not showing to continue interval
+        while($(".page-spinner--in").length > 0) {
+            await sleep(categorySettings["globalPollingInterval"].value);
+        }
+
         // Compare current and previous cart contents for changes
         // Play notification sound if something added to cart
         const cartWrapper = $(".item-list")[0];
@@ -96,13 +100,11 @@ async function savedCartRuntime() {
             if(["white", "blue", "yellow"].includes(buttonColor) === true) {
                 // Click if auto-click is enabled in settings and timeout elapsed
                 // Giving timeout between button clicks prevents rate-limits and such
-                const sinceLastClick = Number(new Date()) - lastClickedButton;
-                const clickMultiplier = lastClickedSKU === savedItem.sku ? 10 : 1;
+                const sinceLastClick = Number(new Date()) - lastClickedTime;
                 if(categorySettings["autoClickWhitelisted"].value === true 
-                    && sinceLastClick > categorySettings["successiveClickTimeout"].value * clickMultiplier) {
+                    && sinceLastClick > categorySettings["successiveClickTimeout"].value) {
                     savedItem.addButton.click();
-                    lastClickedButton = Number(new Date());
-                    lastClickedSKU = savedItem.sku;
+                    lastClickedTime = Number(new Date());
                 }
             }
         }
