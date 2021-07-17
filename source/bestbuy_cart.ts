@@ -12,11 +12,13 @@ let updatedSettingHandlers: { [index: string]: Function } = {
     },
     "whitelistedKeywords": async function() {
         whitelistedKeywords = categorySettings["whitelistedKeywords"].value
-            .split(",").map((keyword: string) => keyword.trim().toLowerCase());
+            .split(",").map((keyword: string) => keyword.trim().toLowerCase())
+            .filter((keyword: string) => keyword != "");
     }, 
     "blacklistedKeywords": async function() {
         blacklistedKeywords = categorySettings["blacklistedKeywords"].value
-            .split(",").map((keyword: string) => keyword.trim().toLowerCase());
+            .split(",").map((keyword: string) => keyword.trim().toLowerCase())
+            .filter((keyword: string) => keyword != "");
     }
 }; // Handlers for when settings are updated without requiring reload
 let messageHandlers: { [index: string]: Function } = {
@@ -89,16 +91,16 @@ async function savedCartRuntime() {
                 description: $(element).find(".simple-item__description")[0].innerText,
                 addButton: $(element).find(".btn")[0],
             } as SavedItem});
-            const initialSavedLength = savedItems.length; // For logging purposes eventually
         }
 
         // Re-scrape saved items elements only when unloaded from DOM, but re-filter every interval
         const filteredSavedItems = savedItems.filter(
             savedItem => whitelistedKeywords.some( // Contains at least one whitelisted keyword
                 keyword => keyword !== "" && savedItem.description.toLowerCase().includes(keyword)
-        )).filter( // Contains no whitelisted keywords
-            savedItem => !blacklistedKeywords.every(keyword => savedItem.description.toLowerCase().includes(keyword))
-        );
+        )).filter( // Contains no whitelisted keywords, edge case for empty blacklisted keywords
+            savedItem => blacklistedKeywords.every(
+                keyword => !savedItem.description.toLowerCase().includes(keyword)
+        ));
 
         // Saved items still loaded or re-scraped, iterate over
         for(const savedItem of filteredSavedItems) {
