@@ -1,0 +1,47 @@
+<!-- About and versioning page, default on popup -->
+
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<html>
+    <link rel="stylesheet" href="/resources/extension.css">
+    <link rel="stylesheet" href="/resources/content.css">
+    <link rel="stylesheet" href="/resources/simplebar.css">
+    <script src="/vendor.js"></script>
+    <script src="/resources/simplebar.min.js"></script>
+    <script src="/resources/jquery-3.6.0.min.js"></script>
+
+    <body>
+        <!-- Navigation sidebar, more like buttons -->
+        <div class="sidebar">
+            <a tag="about" id="default-tab" href="#">About</a>
+            <a tag="settings" href="#">Settings</a>
+            <a tag="changelog" href="#">Changelog</a>
+        </div>
+
+        <!-- Bottom of sidebar small snippets -->
+        <div class="snippet">
+            <p class="snippet-line">AutoQueueUtilities</p>
+            <p class="snippet-line" id="version"></p>
+        </div>
+        
+        <!-- Overlayed individual tab contents for extension -->
+        <!-- Must load scripts separately because of jQuery load limitations -->
+        <div class="content-wrapper about" id="default-content">
+            <div class="content-main"></div>
+        </div>
+        <div class="content-wrapper settings">
+            <div class="content-main"></div>
+        </div>
+        <div class="content-wrapper changelog">
+            <div class="content-main"></div>
+        </div>
+
+        <!-- Source scripts, ensure correct loading order -->
+        <script src="/source/extension.js"></script>
+        <script src="/source/page_about.js"></script>
+        <script src="/source/page_settings.js"></script>
+        <script src="/source/page_changelog.js"></script>
+    </body>
+</html>

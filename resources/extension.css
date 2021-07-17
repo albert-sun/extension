@@ -1,0 +1,55 @@
+body {
+    font-family: "Arial", sans-serif;
+    width: 700px;
+    height: 500px;
+}
+
+.sidebar {
+    height: 100%;
+    width: 20%; /* Maybe make percentage */
+    position: fixed;
+    background-color: #f1f1f1;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    overflow: auto
+}
+
+.sidebar a {
+    padding: 8px 16px 8px 16px;
+    text-decoration: none;
+    font-size: 20px;
+    color: #202020;
+    display: block;
+}
+
+.sidebar a.active {
+    background-color: #0c7c7c;
+    color: white;
+}
+
+.sidebar a:hover:not(.active) {
+    background-color: #555;
+    color: white;
+}
+
+.tab-important {
+    background-color: #b6d8d8;
+    color: #202020;
+}
+
+.snippet {
+    min-width: 20%;
+    position: fixed;
+    z-index: 3;
+    bottom: 8px;
+    left: 0;
+    text-align: center;
+    font-size: 14px;
+    color: #202020;
+}
+
+.snippet-line {
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
