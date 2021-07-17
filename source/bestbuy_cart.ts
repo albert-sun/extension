@@ -10,8 +10,12 @@ let updatedSettingHandlers: { [index: string]: Function } = {
     "notificationSoundURL": async function() { 
         notificationSound = new Audio(categorySettings["notificationSoundURL"].value);
     },
-    "whitelistKeywords": async function() {
-        whitelistedKeywords = categorySettings["whitelistKeywords"].value
+    "whitelistedKeywords": async function() {
+        whitelistedKeywords = categorySettings["whitelistedKeywords"].value
+            .split(",").map((keyword: string) => keyword.trim().toLowerCase());
+    }, 
+    "blacklistedKeywords": async function() {
+        blacklistedKeywords = categorySettings["blacklistedKeywords"].value
             .split(",").map((keyword: string) => keyword.trim().toLowerCase());
     }
 }; // Handlers for when settings are updated without requiring reload
@@ -29,6 +33,7 @@ let messageHandlers: { [index: string]: Function } = {
 
 let notificationSound: HTMLAudioElement;
 let whitelistedKeywords: string[] = []; // Lowercase
+let blacklistedKeywords: string[] = []; // Lowercase
 let savedItems: SavedItem[] = [];
 let previousCartLength = 0; // Cannot access DOM global variables, improvise
 let lastClickedTime = 0; // Unix timestamp for last time button clicked
@@ -87,11 +92,13 @@ async function savedCartRuntime() {
             const initialSavedLength = savedItems.length; // For logging purposes eventually
         }
 
-        // Re-scrape saved items elements only when doesn't exist, but re-filter every interval
+        // Re-scrape saved items elements only when unloaded from DOM, but re-filter every interval
         const filteredSavedItems = savedItems.filter(
-            savedItem => whitelistedKeywords.some(
+            savedItem => whitelistedKeywords.some( // Contains at least one whitelisted keyword
                 keyword => keyword !== "" && savedItem.description.toLowerCase().includes(keyword)
-        ));
+        )).filter( // Contains no whitelisted keywords
+            savedItem => !blacklistedKeywords.every(keyword => savedItem.description.toLowerCase().includes(keyword))
+        );
 
         // Saved items still loaded or re-scraped, iterate over
         for(const savedItem of filteredSavedItems) {

@@ -1,15 +1,17 @@
 {
     "name": "AutoGraphicsUtilities",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "author": "Albert Sun",
     "description": "Automated utilities for purchasing graphics cards",
     "manifest_version": 3,
     "minimum_chrome_version": "91",
-    "permissions": ["clipboardRead", "clipboardWrite", "contentSettings", "scripting", "storage", "tabs"],
+    "permissions": ["contentSettings", "scripting", "storage", "tabs"],
     "action": {
         "default_popup": "/pages/extension.html",
         "default_icon": {
-            "128": "/resources/icon_128.png"
+            "128": "/resources/icon_128.png",
+            "256": "/resources/icon_256.png",
+            "512": "/resources/icon_512.png"
         }
     },
     "content_scripts": [{
@@ -23,7 +25,9 @@
         "js": ["/source/bestbuy_product.js", "/vendor.js"]
     }],
     "icons": {
-        "128": "/resources/icon_128.png"
+        "128": "/resources/icon_128.png",
+        "256": "/resources/icon_256.png",
+        "512": "/resources/icon_512.png"
     },
     "background": {
         "service_worker": "background.js",

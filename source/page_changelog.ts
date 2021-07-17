@@ -10,7 +10,6 @@ const pageContent = $(pageWrapper).find(".content-main");
 pageContent.load(`/pages/${pageName}.html`, function() {
     // Add each changelog as a separate div into the main div
     const changelogsDiv = $("#changelog-contents")[0];
-    setTimeout(function() { console.log($("#changelog-contents")[0]); }, 500);
     for(const changelog of changelogs) {
         const brk = document.createElement("br");
         changelogsDiv.appendChild(brk);
@@ -28,7 +27,7 @@ pageContent.load(`/pages/${pageName}.html`, function() {
         // Add each bullet point as a paragraph underneath
         for(const bulletpoint of changelog.bulletpoints) {
             const bulletParagraph = document.createElement("p");
-            bulletParagraph.classList.add("changelog-bullet");
+            bulletParagraph.classList.add("bulletpoint");
             changelogDiv.appendChild(bulletParagraph);
             bulletParagraph.innerHTML = `\u2022 ${bulletpoint}`;
         }
