@@ -1,11 +1,11 @@
 {
     "name": "AutoGraphicsUtilities",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "author": "Albert Sun",
     "description": "Automated utilities for purchasing graphics cards",
     "manifest_version": 3,
     "minimum_chrome_version": "91",
-    "permissions": ["contentSettings", "scripting", "storage", "tabs"],
+    "permissions": ["scripting", "storage", "tabs"],
     "action": {
         "default_popup": "/pages/extension.html",
         "default_icon": {

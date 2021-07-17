@@ -3,6 +3,13 @@ import { AllSettings, Changelog } from "./structure";
 // Changelog from previous versions
 export const changelogs: Changelog[] = [
     {
+        "version": "b0.2.1",
+        "bulletpoints": [
+            `Fixed empty blacklist disqualifying all saved items`,
+            `Replaced icon which said "AQU" instead of "AGU" (original extension name was AutoQueueUtilities)`,
+            `<b>TODO:</b> Fix notification sound not playing if user hasn't interacted with document, maybe play from background instead?`
+        ]
+    }, {
         "version": "b0.2.0",
         "bulletpoints": [
             `Added About tab showing some information and usage instructions`,
