@@ -1,51 +1,78 @@
-const webpack = require("webpack");
-var glob = require('glob');
 const path = require("path");
-const CopyPlugin = require("copy-webpack-plugin");
+const SveltePreprocess = require("svelte-preprocess");
 
-// Source files: background must be top-level for some reason
-const files = glob.sync('./source/*.ts').reduce(function(obj, el){
-    obj[`source/${path.parse(el).name}`] = el;
-    return obj
-},{});
-files["background"] = "./background.ts";
+const mode = process.env.NODE_ENV || 'development';
+const prod = mode === 'production';
 
-module.exports = {
-    entry: files,
+// Source files for outputting individual files
+const individualFilenames = {
+    "public/resources/background_main": "/source/background/main.ts",
+    "public/resources/background_bestbuy": "/source/background/bestbuy.ts",
+    "public/resources/content_bestbuy": "/source/content/bestbuy.ts",
+    "public/resources/extension": "/source/extension/extension.ts",
+}; // TODO make modular or something, skip other files
+
+const config = {
+    entry: individualFilenames,
     output: {
-        path: path.join(__dirname, "../dist"),
+        path: path.join(__dirname, ".."),
         filename: "[name].js",
     },
     optimization: {
         splitChunks: {
-            name: "vendor",
+            name: "public/resources/vendor",
             chunks: "initial",
         },
     },
+    // Don't use vendor file because unsure
     module: {
-        rules: [
-            {
-                test: /\.tsx?$/,
-                use: "ts-loader",
-                exclude: /node_modules/,
+        rules: [{
+            test: /\.svelte$/,
+            use: {
+                loader: 'svelte-loader',
+                options: {
+                    compilerOptions: {
+                        dev: !prod
+                    },
+                    emitCss: prod,
+                    hotReload: !prod,
+                    preprocess: SveltePreprocess({
+                        scss: true,
+                    }),
+                    onwarn(warning, onwarn) {
+                        if (!/A11y:/.test(warning.message)) {
+                            onwarn(warning);
+                        }
+                    },
+                },
             },
-        ],
+        }, {
+            test: /\.ts$/,
+            use: 'ts-loader',
+            exclude: /node_modules/
+        }, {
+            // required to prevent errors from Svelte on Webpack 5+
+            test: /node_modules\/svelte\/.*\.mjs$/,
+            resolve: {
+                fullySpecified: false
+            }
+        }],
     },
     resolve: {
-        extensions: [".ts", ".tsx", ".js"],
+        modules: [path.join(__dirname, '../node_modules')],
+        extensions: [".ts", ".tsx", ".js", ".jsx"],
+        alias: { 
+            "svelte": path.resolve('node_modules', 'svelte'),
+            "svelte/internal": require.resolve("svelte/internal"),
+            "svelte/store": require.resolve("svelte/store"),
+        }
     },
-    plugins: [
-        new CopyPlugin({
-            patterns: [{ from: ".", to: "./resources", context: "resources" }],
-            options: {},
-        }), // Resources including CSS, JS, and static files
-        new CopyPlugin({
-            patterns: [{ from: ".", to: "./pages", context: "pages" }],
-            options: {},
-        }), // HTML pages for extension popup
-        new CopyPlugin({
-            patterns: [{ from: "./manifest.json", to: "./manifest.json", context: "." }],
-            options: {},
-        }), // Manifest.json file
-    ],
+    experiments: {
+        topLevelAwait: true,
+    },
+    mode,
 };
+
+module.exports = [
+    config
+];

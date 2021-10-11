@@ -1,0 +1,135 @@
+import { browser } from "webextension-polyfill/dist/browser-polyfill.min.js";
+import type { EVGAGraphicsCategory, EVGAGraphicsData, EVGAGraphicsProduct, EVGAScrapedData, MessageRequest, MessageResponse } from "../shared/types";
+import { storageGet, storageSet } from "../shared/utilities";
+import $ from "jquery";
+
+const defaultEVGAGraphics: EVGAGraphicsData = {
+    last: 0,
+    categories: []
+}; // Default placeholder for evgaGraphics
+const defaultEVGAScraped: EVGAScrapedData = {
+    last: 0,
+    tokens: {
+        formValues: {},
+        csrf: "",
+        __ncforminfo: "",
+        __VIEWSTATEGENERATOR: "",
+        __EVENTVALIDATION: "",
+    }
+}; // Default placeholder for evgaScraped
+const graphicsURL = "https://www.evga.com/Products/ProductList.aspx?type=0&family=GeForce+30+Series+Family";
+const graphicsExpiry = 1000 * 60 * 60 * 24; // Every day
+const scrapedExpiry = 1000 * 60 * 5; // Every 5 minutes?
+
+// Asynchronous background handlers for various functions
+const handlers: { [index: string]: Function } = {
+    "evga-update-graphics": evgaUpdateGraphics,
+    "evga-update-scraped": evgaUpdateScraped,
+};
+
+// Updates semi-static EVGA graphics cards data if necessary
+// Compares current timestamp to last, only updates if more than one day old
+async function evgaUpdateGraphics(): Promise<EVGAGraphicsData> {
+    const start = new Date().getTime(); // In milliseconds
+
+    // Retrieve existing data from Storage API, update if outdated
+    const evgaGraphics = await storageGet("evga-graphics", defaultEVGAGraphics);
+    if(start - evgaGraphics.last > graphicsExpiry) {
+        // Outdated information, re-scrape from EVGA
+        evgaGraphics.last = start; // Update timestamp
+        const response = await fetch(graphicsURL);
+        const html = $.parseHTML(await response.text()); // Parse into DOM elements
+
+        // Iterate over all products on graphics card page
+        let index = 0;
+        const productListNode = $(html).find("#LFrame_prdList_pnlListView")[0] as HTMLDivElement;
+        const categoryNodes = Array.from(productListNode.children)
+            .filter(node => node.tagName === "DIV");
+        for(const categoryNode of categoryNodes) {
+            // Get category name
+            const display = $(categoryNode).find("span")[0].innerText;
+
+            // Initialize category data and iterate over children
+            const categoryData: EVGAGraphicsCategory = {
+                display: display,
+                index: index, 
+                products: [] as EVGAGraphicsProduct[],
+            };
+            const productNodes = Array.from(categoryNode.children)
+                .filter(node => node.className.includes("list-item"));
+            for(const productNode of productNodes) {
+                const display = $(productNode).find("a")[1]
+                    .innerText.split(",")[0]; // Should get enough
+                const pn = $(productNode).find("label")[0]
+                    .getAttribute("for") as string;
+                
+                // Initialize product data and increment index
+                const productData: EVGAGraphicsProduct = {
+                    display: display,
+                    pn: pn,
+                };
+
+                categoryData.products.push(productData);
+
+                // Increment index per product
+                index++;
+            }
+
+            evgaGraphics.categories.push(categoryData);
+
+            // Also increment index per category?
+            index++;
+        }
+
+        // Update graphics data in Storage API
+        await storageSet("evga-graphics", evgaGraphics);
+    }
+
+    return evgaGraphics;
+}
+
+// Updates session-based tokens for EVGA for adding to cart
+async function evgaUpdateScraped(): Promise<EVGAScrapedData> {
+    const start = new Date().getTime(); // In milliseconds
+
+    // Retrieve existing data from Storage API, update if outdated
+    const evgaScraped = await storageGet("evga-scraped", defaultEVGAScraped);
+    if(start - evgaScraped.last > scrapedExpiry) {
+        // Outdated information, re-scrape from EVGA
+        evgaScraped.last = start; // Update timestamp
+        const response = await fetch(graphicsURL);
+        const html = $.parseHTML(await response.text()); // Parse into DOM elements
+
+        // Iterate over aspNetHidden children to populate form values
+        const aspInputChildren = $(html).find(".aspNetHidden").find("input").toArray();
+        for(const childInput of aspInputChildren) {
+            evgaScraped.tokens.formValues[childInput.name] = childInput.value;
+        }
+
+        // Populate miscellaneous submission values not found within aspNetHidden
+        const productForm = $("#form1")[0] as HTMLFormElement;
+        const ncFormInfoInput = $(productForm).find("[name='__ncforminfo']")[0] as HTMLInputElement;
+        evgaScraped.tokens.__ncforminfo = ncFormInfoInput.value;
+
+        // Update graphics data in Storage API
+        await storageSet("evga-scraped", evgaScraped);
+    }
+
+    return evgaScraped;
+}
+
+// Basic message handler - parses message from JSON containing sender, instruction, and data
+browser.runtime.onMessage.addListener(async (message, sender) => {
+    // Async handler, return true to flag asynchronous response
+    const request = message as MessageRequest;
+
+    // Run given handler if it exists, otherwise return nothing
+    const response: MessageResponse = { success: false, payload: undefined };
+    if(handlers[request.handler] !== undefined) {
+        const result = await handlers[request.handler](sender, ...request.arguments || []);
+        response.payload = JSON.stringify(result);
+    }
+    const serialized = JSON.stringify(response);
+
+    return serialized;
+});

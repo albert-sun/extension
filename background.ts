@@ -1,4 +1,4 @@
-/*import { browser, Runtime, Tabs } from "webextension-polyfill-ts";
+/*import { browser, Runtime, Tabs } from "webextension-polyfill/dist/browser-polyfill.min.js";
 import { defaultSettings } from "./source/constants";
 import { Message, Setting } from "./source/structure";
 

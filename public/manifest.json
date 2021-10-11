@@ -1,0 +1,44 @@
+{
+    "name": "Graphics Queue Utilities",
+    "version": "1.0.0",
+    "author": "Albert Sun (akito#9528)",
+    "description": "Partially-automated utilities for purchasing graphics cards",
+    "manifest_version": 2,
+    "minimum_chrome_version": "91",
+    "permissions": [
+        "notifications",
+        "storage",
+        "tabs",
+        "webRequest",
+        "webRequestBlocking",
+        "*://*.bestbuy.com",
+        "*://*.bestbuy.com/cart/api/v1/addToCart"
+    ],
+    "browser_action": {
+        "default_popup": "/pages/extension.html",
+        "default_title": "Graphics Utilities",
+        "default_icon": {
+            "128": "/resources/icon_128.png",
+            "256": "/resources/icon_256.png",
+            "512": "/resources/icon_512.png"
+        }
+    },
+    "icons": {
+        "128": "/resources/icon_128.png",
+        "256": "/resources/icon_256.png",
+        "512": "/resources/icon_512.png"
+    },
+    "background": {
+        "page": "/pages/background.html",
+        "persistent": true
+    }, 
+    "content_scripts": [{
+        "matches": ["https://*.bestbuy.com/*"],
+        "js": [
+            "/resources/jquery-3.6.0.min.js", 
+            "/resources/browser-polyfill.min.js", 
+            "/resources/vendor.js", 
+            "/resources/content_bestbuy.js"
+        ]
+    }]
+}
