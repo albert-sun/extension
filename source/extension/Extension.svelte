@@ -27,6 +27,8 @@
 <style lang="scss">
     /* CSS variables for reference */
     :global(:root) {
+        /* Miscellaneous shades */
+        --color-red: red;
         /* Teal shades */
         --color-teal-darkest: #215e5e;
         --color-teal-darker: #2b7979;

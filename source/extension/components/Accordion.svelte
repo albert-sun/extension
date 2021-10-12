@@ -55,8 +55,8 @@
 
 <style lang="scss">
     div.accordion {
-        border-left: 2px solid var(--color-darkestgrey);
-        border-right: 2px solid var(--color-darkestgrey);
+        border: 2px solid var(--color-darkestgrey);
+        border: 2px solid var(--color-darkestgrey);
         width: 100%;
 
         div.accordion-category {
@@ -100,14 +100,14 @@
                     &:last-child { padding-bottom: 0.5em; }
 
                     td.cell-left {
-                        width: 70%;
+                        width: 80%;
                         white-space: nowrap;
                         overflow: hidden;
                         text-align: left; 
                     }
 
                     td.cell-right {
-                        width: 30%;
+                        width: 20%;
                         justify-content: center;
                         align-items: center;
                         white-space: nowrap; 

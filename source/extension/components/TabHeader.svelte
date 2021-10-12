@@ -33,6 +33,10 @@
         background-color: var(--color-teal-darker);
 
         /* Override color */
-        a { color: inherit; }
+        a { 
+            color: inherit; 
+            cursor: pointer;
+            text-decoration: underline;
+        }
     }
 </style>

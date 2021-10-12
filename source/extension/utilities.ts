@@ -15,10 +15,23 @@ export function decodeQueue(queueCode: string) {
 }
 
 // Calculates the number of minutes and seconds for queue
-export function minutesSeconds(totalMilliSeconds: number): [number, number] {
-    const totalSeconds = totalMilliSeconds / 1000;
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
+export function minutesSeconds(totalMilliSeconds: number, truncate = false): [number, number, boolean] {
+    // Bypass functionality for negative times
+    let negative = false;
+    if(totalMilliSeconds < 0) {
+        totalMilliSeconds = totalMilliSeconds * -1;
+        negative = true;
+    }
 
-    return [minutes, seconds]
+    const totalSeconds = totalMilliSeconds / 1000;
+    let minutes = Math.floor(totalSeconds / 60);
+    let seconds = totalSeconds % 60;
+
+    // Truncate numbers if desired
+    if(truncate === true) {
+        minutes = Math.floor(minutes);
+        seconds = Math.floor(seconds);
+    }
+
+    return [minutes, seconds, negative]
 }

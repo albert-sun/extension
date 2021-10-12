@@ -3,8 +3,8 @@
     import type { Writable } from "svelte/store";
     import { decodeQueue, minutesSeconds } from "../../extension/utilities";
     import { backgroundSelf, defaultSettings } from "../../shared/constants";
-    import type { BestBuyQueuesData, Settings, MessageHandlers, Setter } from "../../shared/types";
-    import { extensionLog, initializeStore, messageProcessHandlers } from "../../shared/utilities";
+    import type { BestBuyQueuesData, Settings, MessageHandlers, Setter, QueueData } from "../../shared/types";
+    import { extensionLog, initializeStore, messageProcessHandlers, sendMessageToContent } from "../../shared/utilities";
 
     interface AddToCartBody { 
         items: { skuId: string }[]; 
@@ -30,6 +30,35 @@
         }
         extensionLog("background-bestbuy", `Startup routine, retrieved and tracking ${initialQueues} existing queues from storage`);
 
+        // Register Messages API listener for processing handlers
+        const messageHandlers: MessageHandlers = {
+            "get-bestbuy-product_queues": async function() { return $queues },
+            "merge-bestbuy-product_queues": async function(mergeQueueData: QueueData) {
+                // Iterate over browser queue for each SKU, merging unseen with currently tracked
+                const currentTime = new Date().getTime(); // In milliseconds from epoch
+                for(const [sku, skuQueueData] of Object.entries(mergeQueueData)) {
+                    // Check whether queue with given ID is being tracked
+                    const existingQueues = $queues[sku] || {};
+                    if(existingQueues[skuQueueData[1]] === undefined) {
+                        // Decode queue and remaining time from data
+                        const [startTime, a2cTransactionReferenceId, a2cTransactionCode] = skuQueueData;
+                        const queueTime = decodeQueue(skuQueueData[1]); 
+                        const remainingTime = startTime + queueTime - currentTime;
+                        
+                        // Don't bother adding if queue already expired
+                        if(remainingTime > -5 * 60 * 1000) {
+                            // Construct and store queue data for given SKU
+                            const queueData = { startTime, a2cTransactionReferenceId, a2cTransactionCode, queueTime };
+                            const existingQueues = $queues[sku] || {};
+                            existingQueues[a2cTransactionReferenceId] = queueData;
+                            setQueues(sku, existingQueues);
+                        }
+                    }
+                }
+            },
+        }; // Message handlers for processing from Messages API
+        messageProcessHandlers("background", messageHandlers, ["extension"]);
+
         // Initialize periodic interval for checking queues
         // Automatically broadcast add-to-cart to content script when queue elapsed
         setInterval(async function() {
@@ -42,17 +71,20 @@
                     if(remainingTime <= 0) {
                         // Only add and notify if not expired, otherwise silently delete
                         if(remainingTime > -5 * 60 * 1000) {
-                            extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, broadcasting add-to-cart request`);
-
-                            // Broadcast add-to-cart request
-                            /*
-                            const response = await sendMessageBackContent("bestbuy", "process-atc", [sku, queueData]);
-                            if(response.status === "success") {
-                                extensionLog("background-bestbuy", `Successfully added SKU ${sku} to cart`);
-                            } else if(response.status === "error") {
-                                extensionLog("background-bestbuy", `Error adding SKU ${sku} to cart: ${response.payload as string}`);
-                            } // Log handler not found to backend instead
-                            */
+                            // Check whether setting to auto-add is enabled before proceeding
+                            if($settings["bestbuy"]["autoAddQueue"] === true) {
+                                extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, broadcasting add-to-cart request`);
+                            
+                                // Broadcast add-to-cart request if setting enabled
+                                const response = await sendMessageToContent(self, "bestbuy", "process-atc", [sku, queueData]);
+                                if(response.status === "success") {
+                                    extensionLog("background-bestbuy", `Successfully added SKU ${sku} to cart`);
+                                } else if(response.status === "error") {
+                                    extensionLog("background-bestbuy", `Error adding SKU ${sku} to cart: ${response.payload as string}`);
+                                } // Log handler not found to backend instead
+                            } else {
+                                extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, waiting for manual because of setting`);
+                            }
                         } else {
                             extensionLog("background-bestbuy", `Queue popped but expired for ${sku}, silently deleting`);
                         }
@@ -64,12 +96,6 @@
                 }
             }
         }, 5000); // Default check every second 
-
-        // Register Messages API listener for processing handlers
-        const messageHandlers: MessageHandlers = {
-            "get-bestbuy-product_queues": async function() { return $queues },
-        }; // Message handlers for processing from Messages API
-        messageProcessHandlers("background", messageHandlers, ["extension"]);
 
         // Register webRequest listener for intercepting Best Buy add-to-cart requests
         const requestBodyCache: { [requestId: string]: AddToCartBody } = {};

@@ -13,7 +13,12 @@ export const defaultSettings: Settings = {
     "global": {
         "forceTab": false,
         "pollingInterval": 5000,
-    }
+    },
+    "bestbuy": {
+        "autoAddQueue": true,
+        "forceReload": false,
+        "retryTimeout": 15000,
+    },
 }
 export const settingLabels: SettingLabels = {
     "global": {
@@ -26,6 +31,21 @@ export const settingLabels: SettingLabels = {
                 display: "Polling interval for background script and extension",
                 args: { "suffix": "ms" }
             },
+        }
+    },
+    "bestbuy": {
+        display: "Best Buy Settings",
+        settings: {
+            "autoAddQueue": {
+                display: "Automatically add-to-cart when queue pops",
+            },
+            "forceReload": {
+                display: "(TODO) Automatically reload tabs when rate-limited",
+            },
+            "retryTimeout": {
+                display: "(TODO) Timeout between retrying failed queue add-to-carts",
+                args: { "suffix": "ms" },
+            }
         }
     }
 }
@@ -181,11 +201,11 @@ export const rawBestBuyItems: RawAccordionData = {
         ],
     },
 };
-export const bestBuyDisplays: { [sku: string]: string } = Object.entries(rawBestBuyItems).reduce((obj, [rawCategoryKey, rawCategoryData]) => {
+export const bestBuyDisplays: { [sku: string]: string } = Object.entries(rawBestBuyItems).reduce((obj, [_, rawCategoryData]) => {
     obj = {
         ...obj, 
-        ...Object.entries(rawCategoryData).reduce((subObj, [rawItemKey, rawItemData]) => {
-            subObj[rawItemKey] = rawItemData.display;
+        ...Object.entries(rawCategoryData.items).reduce((subObj, [_, rawItemData]) => {
+            subObj[rawItemData.data] = rawItemData.display;
     
             return subObj;
         }, {} as { [sku: string]: string }),

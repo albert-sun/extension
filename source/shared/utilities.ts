@@ -46,17 +46,20 @@ export async function initializeStore<Type>(self: string, key: string, defaultVa
     browser.runtime.onMessage.addListener(async (message, sender) => {
         // Check whether key matches and perform update or deletion
         const request = message as MessageRequest;
+        console.log(request);
         if(request.handler === "update-set") {
             // Deconstruct arguments and set/replace key in store
-            const [setKey, setValue] = request.args as [string, any];
-            if(setKey === key) { // Ensure key matches before setting
+            const [storeKey, setKey, setValue] = request.args as [string, string, any];
+            if(storeKey === key) { // Ensure key matches before setting
                 // DO NOT use setter, otherwise update broadcasts in loop
+                console.log(get(store));
                 store.update(value => { (value as any)[setKey] = setValue; return value });
+                console.log(get(store));
             }
         } else if(request.handler === "update-delete") {
             // Deconstruct arguments and delete key from store
-            const [delKey] = request.args as [string];
-            if(delKey === key) {
+            const [storeKey, delKey] = request.args as [string, string];
+            if(storeKey === key) {
                 // DO NOT use deleter, otherwise update broadcasts in loop
                 store.update(value => { delete (value as any)[delKey]; return value });
             }

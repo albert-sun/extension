@@ -53,7 +53,7 @@ async function runtime() {
     // Can't intercept requests, instead intercept data manually?
     const serializedQueueData = atob(localStorage.getItem("purchaseTracker") || "e30=");
     const queueData = JSON.parse(serializedQueueData) as QueueData;
-    sendMessageToBackground("content_best-buy", "updateQueueData", [queueData]); // Throw and forget
+    sendMessageToBackground("content_best-buy", "merge-bestbuy-product_queues", [queueData]); // Throw and forget
 }
 
 await startup();
