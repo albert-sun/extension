@@ -3,7 +3,7 @@
     import type { Writable } from "svelte/store";
     import { decodeQueue, minutesSeconds } from "../../extension/utilities";
     import { backgroundSelf, bestBuyDisplays, defaultSettings } from "../../shared/constants";
-    import type { BestBuyQueuesData, Settings, MessageHandlers, Setter, QueueData } from "../../shared/types";
+    import type { BestBuyQueuesData, Settings, MessageHandlers, Setter, QueueData, ProductQueueData } from "../../shared/types";
     import { extensionLog, initializeStore, messageProcessHandlers, sendMessageToContent } from "../../shared/utilities";
 
     interface AddToCartBody { 
@@ -11,36 +11,41 @@
     }; // Body sent with addToCart POST request
 
     const self = backgroundSelf;
-    let notificationSuccess: HTMLAudioElement;
+    let notifications: { [key: string]: HTMLAudioElement };
 
     // Declare stores initially to avoid errors
     let queues: Writable<BestBuyQueuesData>;
     let setQueues: Setter;
     let settings: Writable<Settings>; // Read-only
 
-    // Successful cart - show notification and play notification sound
-    async function successfulCart(...args: any[]) {
-        const [sku] = args as [string];
+    // Play corresponding notification sound and show notification
+    async function soundNotification(...args: any[]) {
+        // Notification: whether to show notification or only play sound
+        const [soundKey, title, message, settingsKeys] = args as [string, string, string, string[]];
 
         // Show desktop notification through API if desired
-        if($settings["bestbuy"]["showNotification"] === true) {
-            const productName = bestBuyDisplays[sku];
+        if($settings[settingsKeys[0]][settingsKeys[1]] === true) {
             browser.notifications.create({
                 type: "basic",
-                title: `Best Buy - Successfully Carted!`,
-                message: productName,
+                title: title,
+                message: message,
                 iconUrl: "../resources/icon_512.png",
             });
         }
 
-        // Always play notification sound regardless
-        await notificationSuccess.play();
+        // Play notification sound with given key if desired
+        await notifications[soundKey].play()
     }
 
     // Does not include destructor, don't care
     onMount(async function() {
         // Load notification sounds from resource file for playing
-        notificationSuccess = new Audio("../resources/notification_success.mp3");
+        notifications = {
+            "success": new Audio("../resources/notification_success.mp3"),
+            "failure": new Audio("../resources/notification_queue.mp3"),
+            "queue": new Audio("../resources/notification_queue.mp3"),
+            "rateLimit": new Audio("../resources/notification_ratelimit.mp3"),
+        };
 
         // Initialize various stores and custom logic for broadcasting updates
         ({ store: queues, set: setQueues } = await initializeStore<BestBuyQueuesData>(self, "queues", {}));
@@ -55,7 +60,7 @@
 
         // Register Messages API listener for processing handlers
         const messageHandlers: MessageHandlers = {
-            "successful-cart": successfulCart,
+            "sound-notification": soundNotification,
             "get-bestbuy-product_queues": async function() { return $queues },
             "merge-bestbuy-product_queues": async function(mergeQueueData: QueueData) {
                 // Iterate over browser queue for each SKU, merging unseen with currently tracked
@@ -81,29 +86,23 @@
                 }
             },
         }; // Message handlers for processing from Messages API
-        messageProcessHandlers("background", messageHandlers, ["extension"]);
+        messageProcessHandlers("background", messageHandlers, ["content", "extension"]);
 
         // Initialize periodic interval for checking queues
         // Automatically broadcast add-to-cart to content script when queue elapsed
-        let lastRetryTimes: { [queueId: string]: number } = {};
+        const blacklisted: Set<string> = new Set(); // Failed queues to ignore for automatic adding
         setInterval(async function() {
             // Iterate over SKU data and individual queues within checking for readiness
             const currentTime = new Date().getTime(); // In milliseconds from epoch
             for(const [sku, skuQueueData] of Object.entries($queues)) {
                 for(const [a2cTransactionReferenceId, queueData] of Object.entries(skuQueueData)) {
-                    // Check whether queue add attempt should be retried, skip if not elapsed
-                    const lastRetryTime = lastRetryTimes[queueData.a2cTransactionReferenceId]
-                    if(lastRetryTime !== undefined && currentTime - lastRetryTime < $settings["bestbuy"]["retryTimeout"]) {
-                        continue;
-                    }
-
                     // Check whether queue popped, if so broadcast both add-to-cart and deletion
                     const remainingTime = queueData.startTime + queueData.queueTime - currentTime;
                     if(remainingTime <= 0) {
                         // Only add and notify if not expired, otherwise silently delete
                         if(remainingTime > -5 * 60 * 1000) {
                             // Check whether setting to auto-add is enabled before proceeding
-                            if($settings["bestbuy"]["autoAddQueue"] === true) {
+                            if($settings["bestbuy"]["autoAddQueue"] === true && blacklisted.has(queueData.a2cTransactionReferenceId) === false) {
                                 extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, broadcasting add-to-cart request`);
                             
                                 // Broadcast add-to-cart request if setting enabled
@@ -111,24 +110,31 @@
                                 if(response.payload === 200) {
                                     extensionLog("background-bestbuy", `Successfully added SKU ${sku} to cart`);
                                 
-                                    await successfulCart(sku); // Play notification sound
+                                    // Construct for sending notification with sound
+                                    const title = "Best Buy - Successfully Carted";
+                                    const message = bestBuyDisplays[sku];
+                                    await soundNotification("success", title, message, ["bestbuy-notifications", "notificationSuccess"])
 
                                     // Perform deletion using custom logic
                                     delete skuQueueData[a2cTransactionReferenceId];
                                     setQueues(sku, skuQueueData);
                                 } else if (response.status === "error") { // Log handler not found to backend instead
+                                    blacklisted.add(queueData.a2cTransactionReferenceId);
+
                                     extensionLog("background-bestbuy", `Error adding SKU ${sku} to cart: ${response.payload as string}`);
                                 } else { // Unknown status like 400, 403, 500
+                                    blacklisted.add(queueData.a2cTransactionReferenceId);
+
                                     extensionLog("background-bestbuy", `Failed to add SKU ${sku} to cart: status ${response.payload}`);
 
-                                    // Only keep queue and retry if desired, otherwise throw away
-                                    if($settings["bestbuy"]["retryQueue"] === true) {
-                                        lastRetryTimes[queueData.a2cTransactionReferenceId] = currentTime;
-                                    } else {
-                                        // Perform deletion using custom logic
-                                        delete skuQueueData[a2cTransactionReferenceId];
-                                        setQueues(sku, skuQueueData);
-                                    }
+                                    // Construct for sending notification with sound
+                                    const title = "Best Buy - Failed to cart";
+                                    const message = bestBuyDisplays[sku];
+                                    await soundNotification("failure", title, message, ["bestbuy-notifications", "notificationFailure"])
+
+                                    // Don't delete, let user manually retry and automatically dump old
+                                    /* delete skuQueueData[a2cTransactionReferenceId];
+                                    setQueues(sku, skuQueueData); */
                                 } 
                             } else {
                                 extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, waiting for manual because of setting`);
@@ -136,6 +142,9 @@
                         } else {
                             extensionLog("background-bestbuy", `Queue popped but expired for ${sku}, silently deleting`);
                         
+                            // Remove from set of blacklisted if found
+                            blacklisted.delete(queueData.a2cTransactionReferenceId);
+
                             // Perform deletion using custom logic
                             delete skuQueueData[a2cTransactionReferenceId];
                             setQueues(sku, skuQueueData);
@@ -186,7 +195,7 @@
             }
 
             // If both headers exist and setting enabled, add queue using sku from cached body
-            if((details.statusCode !== 200 || $settings["bestbuy"]["queueSuccess"] === true)
+            if((details.statusCode !== 200 || $settings["bestbuy"]["requeueSuccess"] === true)
                 && a2cTransactionReferenceId !== "" && a2cTransactionCode !== "") {
                 // Retrieve SKU from cached request body, assume SKU is desired
                 const cachedBody = requestBodyCache[details.requestId]; // In case if somehow not cached
@@ -195,7 +204,7 @@
                     extensionLog("background-bestbuy", `[webRequest.onHeadersReceived] Couldn't find cached POST body for request ${details.requestId}`, "error");
                     
                     return;
-                } 
+                }
                 const sku = cachedBody.items[0]?.skuId; // Assume always defined
 
                 // Decode remaining queue time from a2ctransactioncode
@@ -204,12 +213,56 @@
                 const [minutes, seconds] = minutesSeconds(queueTime); // Only for debugging purposes
                 const queueData = { startTime, a2cTransactionReferenceId, a2cTransactionCode, queueTime };
 
-                // Construct and broadcast queue data through Writable
-                const existingQueues = $queues[sku] || {};
-                existingQueues[a2cTransactionReferenceId] = queueData;
-                setQueues(sku, existingQueues);
-            
                 extensionLog("background-bestbuy", `[webRequest.onHeadersReceived] Queue response headers detected for request ${details.requestId} with time ${minutes}m ${seconds}s`);
+
+                // Construct and broadcast queue data through Writable
+                let message: string = ""; // To be filled within statements
+                const productName = bestBuyDisplays[sku];
+                let existingQueues = $queues[sku] || {};
+                if($settings["bestbuy"]["replaceQueue"] === true && Object.keys(existingQueues).length > 0) {
+                    const currentQueues = Object.entries(existingQueues)
+                        .map(([queueKey, queueData]) => {
+                            const remainingTime = queueData.startTime + queueData.queueTime - startTime;
+                            return [remainingTime, queueKey, queueData] as [number, string, ProductQueueData];
+                        }); // [remaining, queueKey, queueData]
+
+                    // Check whether previous queue time is shorter 
+                    const currentQueueKey = Object.keys(existingQueues)[0];
+                    const currentQueueData = existingQueues[currentQueueKey];
+                    const currentRemaining = currentQueueData.startTime + currentQueueData.queueTime - startTime;
+                    currentQueues.push([currentRemaining, currentQueueKey, currentQueueData]);
+
+                    // Sort and check whether ID of first index matches
+                    currentQueues.sort((queue1, queue2) => { return queue1[0] - queue2[0] });
+                    console.log(currentQueues);
+                    const [diffMinutes, diffSeconds, diffNegative] = minutesSeconds(currentQueues[0][0] - queueTime, true);
+                    if(currentQueues[0][1] === queueData.a2cTransactionReferenceId) {
+                        // Current queue has improvement, show notification
+                        message = `[${productName}] Queue replacement enabled, replacing with ${diffMinutes}m ${diffSeconds}s improvement`;
+                    } else {
+                        // No improvement, clear stragglers and show notification
+                        message = `[${productName}] Queue replacement enabled, not replacing because ${diffMinutes}m ${diffSeconds}s worse`;
+                    }
+
+                    // Replace entire set of queues for SKU with best 
+                    existingQueues = {};
+                    const bestQueueData = currentQueues[0][2];
+                    existingQueues[bestQueueData.a2cTransactionReferenceId] = bestQueueData;
+                    setQueues(sku, existingQueues);
+
+                    console.log(existingQueues);
+                } else {
+                    message = `[${productName}] Intercepted new queue with timer ${minutes}m ${seconds}s`;
+
+                    // Otherwise, perform regular appending
+                    existingQueues[a2cTransactionReferenceId] = queueData;
+                    setQueues(sku, existingQueues);
+                }
+
+                // Construct for sending notification with sound
+                // Can't await soundNotification because async not allowed?
+                const title = "Best Buy - Queue Intercepted"
+                soundNotification("queue", title, message, ["bestbuy-notifications", "notificationQueue"])
             }
 
             // Delete cached body with request ID to prevent memory leaks

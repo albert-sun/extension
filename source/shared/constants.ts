@@ -6,10 +6,20 @@ export const tabURLs = writable([] as string[]); // tab URLs shared between comp
 
 // Aggregate self-identification keys
 export const backgroundSelf = "background";
+export const contentSelf = "content";
 export const extensionSelf = "extension";
 
 // Changelog for display purposes, most recent to oldest
 export const changelogs: ChangelogVersion[] = [
+    {
+        display: "Version 1.1.0",
+        bullets: [
+            "Fixed default settings not properly applying and instead showing 0/false/\"\"/etc.",
+            "Reworked names and descriptions for some settings, please double-check to ensure they look good",
+            "Best Buy: Removed automatically retrying failed automatic requests, should manually perform instead",
+            "Best Buy: Added many Chrome notifications and sound effects for events like failed carting, queue interception, and rate limit. Notification sounds suck though, please send me recommendations!",
+        ]
+    },
     {
         display: "Version 1.0.0 (Initial re-release)",
         bullets: [
@@ -18,39 +28,54 @@ export const changelogs: ChangelogVersion[] = [
             "Best Buy: Background script automatically intercepts and tracks queues",
             "Best Buy: Implemented manual add-to-cart and automatic/manual queue carting",
         ]
-    }
+    },
 ];
 
 // Settings including default for initialization and labels
 export const defaultSettings: Settings = {
     "bestbuy": {
         "autoAddQueue": true,
-        "retryQueue": true,
-        "queueNotification": true,
-        "queueSuccess": true,
-        "retryTimeout": 15000,
+        "replaceQueue": false,
+        "requeueSuccess": true,
     },
+    "bestbuy-notifications": {
+        "notificationSuccess": true,
+        "notificationFailure": true,
+        "notificationQueue": true,
+        "notificationRateLimit": true,
+    }
 };
 export const settingLabels: SettingLabels = {
     "bestbuy": {
-        display: "Best Buy Settings",
+        display: "Best Buy General Settings",
         settings: {
             "autoAddQueue": {
                 display: "Automatically process queue add-to-cart when popped",
             },
-            "retryQueue": {
-                display: "Automatically retry failed queue add-to-cart requests"
+            "replaceQueue": {
+                display: "Replace queues with shortest instead of appending",
             },
-            "queueNotification": {
-                display: "Show browser desktop notification on successful cart"
-            },
-            "queueSuccess": {
+            "requeueSuccess": {
                 display: "Re-queue with response headers on successful cart"
             },
-            "retryTimeout": {
-                display: "Timeout between retrying failed queues",
-                args: { "suffix": "ms" },
-            }
+        }
+    },
+    "bestbuy-notifications": {
+        display: "Best Buy Notification Settings",
+        description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable if you're playing games!",
+        settings: {
+            "notificationSuccess": {
+                display: "Show desktop notification on successful cart"
+            },
+            "notificationFailure": {
+                display: "Show desktop notification on failed cart"
+            },
+            "notificationQueue": {
+                display: "Show desktop notification on queue interception"
+            },
+            "notificationRateLimit": {
+                display: "Show desktop notification on potential rate-limiting (403/500)"
+            },
         }
     }
 };
