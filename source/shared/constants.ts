@@ -12,6 +12,12 @@ export const extensionSelf = "extension";
 // Changelog for display purposes, most recent to oldest
 export const changelogs: ChangelogVersion[] = [
     {
+        display: "Version 1.1.1",
+        bullets: [
+            "Fixed changelog spacing, noone probably even noticed the issue though",
+        ]
+    },
+    {
         display: "Version 1.1.0",
         bullets: [
             "Fixed default settings not properly applying and instead showing 0/false/\"\"/etc.",
