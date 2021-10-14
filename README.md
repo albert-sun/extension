@@ -7,4 +7,4 @@ Chrome extension for performing various partially-automated utilities for websit
 - (Optional) Compile and build for distribution: `npm run dev` to include source maps or `npm run prod` to compile without
 - Load the `public` folder as an unpacked extension into Chrome
 
-(screenshot)[https://github.com/albert-sun/extension/screenshot.png?raw=true]
+![screenshot](https://github.com/albert-sun/extension/blob/main/screenshot.PNG?raw=true)
