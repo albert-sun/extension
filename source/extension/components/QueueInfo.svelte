@@ -34,8 +34,13 @@
             queueData.a2cTransactionCode,
         ]); // Deconstruct and only send relevant parts of queue data
         if(response.payload === 200) {
-            // Play notification sound from background page on success
-            sendMessageToBackground(self, "successful-cart", [sku]);
+            // Construct for sending notification with sound
+            const title = "Best Buy - Successful Cart";
+            const message = bestBuyDisplays[sku];
+            sendMessageToBackground(self, "sound-notification", [
+                "success", title, message, 
+                ["bestbuy-notifications", "notificationSuccess"],
+            ]); // Send category and settings key instead of setting
         }
     }
 

@@ -1,7 +1,8 @@
+import { bestBuyDisplays, contentSelf } from "../shared/constants";
 import type { MessageHandlers, QueueData } from "../shared/types";
 import { extensionLog, messageProcessHandlers, sendMessageToBackground } from "../shared/utilities";
 
-const contentKey = "content_bestbuy"; // Content script identifier
+const self = contentSelf; // Content script identifier
 const messageHandlers: MessageHandlers = {
     "process-atc": processAddtoCart,
 }; // Message handlers for processing from Messages API
@@ -34,15 +35,27 @@ async function processAddtoCart(sku: string, a2cTransactionReferenceId?: string,
         "credentials": "include",
     });
 
-    return response.status
+    // Show notification notifying of potential rate-limit?
+    if(response.status !== 200 && response.status !== 400) {
+        // Construct for sending notification with sound
+        const productName = bestBuyDisplays[sku];
+        const title = "Best Buy - Potential Rate-Limiting";
+        const message = `[${productName}] Potential rate-limiting on add-to-cart request with status ${response.status}, try reloading the tab!`;
+        sendMessageToBackground(self, "sound-notification", [
+            "success", title, message, 
+            ["bestbuy-notifications", "notificationRateLimit"],
+        ]); // Send category and settings key instead of setting
+    }
+
+    return response.status;
 }
 
 // General startup routine for content script
 async function startup() {
     // - Setup message receiving handlers and sending wrapper
-    messageProcessHandlers(contentKey, messageHandlers, ["background", "extension"]); 
+    messageProcessHandlers(self, messageHandlers, ["content", "background", "extension"]); 
 
-    extensionLog(contentKey, "Finished processing content script startup routine");
+    extensionLog(self, "Finished processing content script startup routine");
 }
 
 // Content script runtime processing on-load

@@ -40,7 +40,10 @@
                 <!-- Don't bind, only care about initial setting value
                 Convoluted mess of || because of {} initial render -->
                 <InputValue display={labelSettingData.display}
-                    value={(($settings || {})[labelCategoryKey] || {})[labelSettingKey]}
+                    value={
+                        (($settings || {})[labelCategoryKey] || defaultSettings[labelCategoryKey])[labelSettingKey]
+                        || defaultSettings[labelCategoryKey][labelSettingKey]
+                    }
                     args={labelSettingData.args || {}}
                     on:update={event => { updateSettings(event, labelCategoryKey, labelSettingKey) }}/>
             {/each}

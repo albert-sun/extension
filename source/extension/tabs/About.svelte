@@ -54,7 +54,7 @@
         <p>
             • There's also currently no notification with sound when rate-limiting 
             has been detected, mainly because I couldn't find any nice-sounding
-            notification sounds online. Feel free to send me suggestions, thanks!
+            notification sounds online. Feel free to send me recommendations, thanks!
         </p>
         <p>
             The setting regarding 're-queueing with response headers on successful
