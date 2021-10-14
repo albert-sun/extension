@@ -234,7 +234,6 @@
 
                     // Sort and check whether ID of first index matches
                     currentQueues.sort((queue1, queue2) => { return queue1[0] - queue2[0] });
-                    console.log(currentQueues);
                     const [diffMinutes, diffSeconds, diffNegative] = minutesSeconds(currentQueues[0][0] - queueTime, true);
                     if(currentQueues[0][1] === queueData.a2cTransactionReferenceId) {
                         // Current queue has improvement, show notification
@@ -249,8 +248,6 @@
                     const bestQueueData = currentQueues[0][2];
                     existingQueues[bestQueueData.a2cTransactionReferenceId] = bestQueueData;
                     setQueues(sku, existingQueues);
-
-                    console.log(existingQueues);
                 } else {
                     message = `[${productName}] Intercepted new queue with timer ${minutes}m ${seconds}s`;
 

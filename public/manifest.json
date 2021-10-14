@@ -1,6 +1,6 @@
 {
     "name": "Advanced Automation Utilities",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "author": "Albert Sun (akito#9528)",
     "description": "Automation utilities assisting with purchasing graphics cards (currently: Best Buy)",
     "manifest_version": 2,
