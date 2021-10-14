@@ -1,12 +1,26 @@
 {
-  "compilerOptions": {
-      "strict": true,
-      "module": "commonjs",
-      "target": "es6",
-      "esModuleInterop": true,
-      "sourceMap": false,
-      "outDir": "./dist",
-      "noEmitOnError": true,
-      "typeRoots": [ "node_modules/@types" ]
-  }
+    "extends": "@tsconfig/svelte/tsconfig.json",
+    "compilerOptions": {
+        "strict": true,
+        "target": "ES2017",
+        "module": "ESNext",
+        "sourceMap": false,
+        "isolatedModules": false,
+        "inlineSourceMap": false,
+        "importHelpers": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "strictNullChecks": true,
+        "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true,
+        "rootDir": "./source",
+        "paths": {
+            "@/*": ["../source/*"]
+        },
+    },
+    "include": [
+        "./source/**/*",
+    ]
 }
