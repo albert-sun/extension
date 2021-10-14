@@ -1,5 +1,5 @@
 import { writable } from "../../node_modules/svelte/store";
-import type { RawAccordionData, SettingLabels, Settings } from "./types";
+import type { ChangelogVersion, RawAccordionData, SettingLabels, Settings } from "./types";
 
 // Declare shared stores, NOTE that they can only be shared within the same context!
 export const tabURLs = writable([] as string[]); // tab URLs shared between components
@@ -8,47 +8,52 @@ export const tabURLs = writable([] as string[]); // tab URLs shared between comp
 export const backgroundSelf = "background";
 export const extensionSelf = "extension";
 
+// Changelog for display purposes, most recent to oldest
+export const changelogs: ChangelogVersion[] = [
+    {
+        display: "Version 1.0.0 (Initial re-release)",
+        bullets: [
+            "Completely re-developed the extension from scratch using Svelte",
+            "Manfiest version downgraded from V3 to V2 for persistent background pages",
+            "Best Buy: Background script automatically intercepts and tracks queues",
+            "Best Buy: Implemented manual add-to-cart and automatic/manual queue carting",
+        ]
+    }
+];
+
 // Settings including default for initialization and labels
 export const defaultSettings: Settings = {
-    "global": {
-        "forceTab": false,
-        "pollingInterval": 5000,
-    },
     "bestbuy": {
         "autoAddQueue": true,
-        "forceReload": false,
+        "retryQueue": true,
+        "queueNotification": true,
+        "queueSuccess": true,
         "retryTimeout": 15000,
     },
-}
+};
 export const settingLabels: SettingLabels = {
-    "global": {
-        display: "Global Settings",
-        settings: {
-            "forceTab": { 
-                display: "Automatically open content script tabs",
-            },
-            "pollingInterval": { 
-                display: "Polling interval for background script and extension",
-                args: { "suffix": "ms" }
-            },
-        }
-    },
     "bestbuy": {
         display: "Best Buy Settings",
         settings: {
             "autoAddQueue": {
-                display: "Automatically add-to-cart when queue pops",
+                display: "Automatically process queue add-to-cart when popped",
             },
-            "forceReload": {
-                display: "(TODO) Automatically reload tabs when rate-limited",
+            "retryQueue": {
+                display: "Automatically retry failed queue add-to-cart requests"
+            },
+            "queueNotification": {
+                display: "Show browser desktop notification on successful cart"
+            },
+            "queueSuccess": {
+                display: "Re-queue with response headers on successful cart"
             },
             "retryTimeout": {
-                display: "(TODO) Timeout between retrying failed queue add-to-carts",
+                display: "Timeout between retrying failed queues",
                 args: { "suffix": "ms" },
             }
         }
     }
-}
+};
 
 // Best Buy data for manual add-to-cart and display
 export const rawBestBuyItems: RawAccordionData = {

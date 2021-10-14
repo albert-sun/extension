@@ -47,14 +47,14 @@
         align-items: center;
 
         td.cell-left { 
-            width: 80%;
+            width: 70%;
             white-space: nowrap;
             overflow: hidden;
             text-align: left; 
         }
 
         td.cell-right {
-            width: 20%;
+            width: 30%;
             justify-content: center;
             align-items: center;
             white-space: nowrap; 

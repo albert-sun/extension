@@ -32,6 +32,8 @@
                 on:click={() => { categoryClick(categoryKey) }}>
                 {categoryData.display}
             </p>
+
+            <!-- Only "expand" content if category selected -->
             {#if categoryKey === focused}
                 <div class="flex-column category-items"
                     transition:slide={{ duration: 500 }}>
@@ -55,8 +57,9 @@
 
 <style lang="scss">
     div.accordion {
-        border: 2px solid var(--color-darkestgrey);
-        border: 2px solid var(--color-darkestgrey);
+        border-bottom: 2px solid var(--color-darkestgrey);
+        border-right: 2px solid var(--color-darkestgrey);
+        border-left: 2px solid var(--color-darkestgrey);
         width: 100%;
 
         div.accordion-category {
@@ -66,7 +69,6 @@
                 padding: 0.5em;
                 cursor: pointer;
                 border-top: 2px solid var(--color-darkestgrey);
-                border-bottom: 2px solid var(--color-darkestgrey);
                 background-color: var(--color-teal-dark);
                 color: var(--color-white);
                 user-select: none;
@@ -100,14 +102,14 @@
                     &:last-child { padding-bottom: 0.5em; }
 
                     td.cell-left {
-                        width: 80%;
+                        width: 70%;
                         white-space: nowrap;
                         overflow: hidden;
                         text-align: left; 
                     }
 
                     td.cell-right {
-                        width: 20%;
+                        width: 30%;
                         justify-content: center;
                         align-items: center;
                         white-space: nowrap; 

@@ -48,6 +48,12 @@ export interface MessageResponse {
     payload: any;    // result / undefined / error message
 }; // Message response passed through Messages API
 
+// Changelog stuff
+export interface ChangelogVersion {
+    display: string;
+    bullets: string[];
+}
+
 // Global settings shared within extension
 export interface Settings {
     [category: string]: SettingsCategory;

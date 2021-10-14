@@ -14,6 +14,7 @@
     // Does not include destructor, don't care
     onMount(async function() {
         // Initialize settings store and merge with default settings if some aren't defined
+        // Treat as source of truth, no other background script should "merge" settings like this
         ({ store: settings, set: setSettings } = await initializeStore<Settings>(self, "settings", defaultSettings));
         for(const [categoryKey, categoryData] of Object.entries(defaultSettings)) {
             // Check whether the given category exists

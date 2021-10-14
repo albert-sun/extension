@@ -1,8 +1,8 @@
 {
-    "name": "Graphics Queue Utilities",
+    "name": "Advanced Automation Utilities",
     "version": "1.0.0",
     "author": "Albert Sun (akito#9528)",
-    "description": "Partially-automated utilities for purchasing graphics cards",
+    "description": "Automated utilities assisting with purchasing graphics cards (currently: Best Buy)",
     "manifest_version": 2,
     "minimum_chrome_version": "91",
     "permissions": [
@@ -11,7 +11,7 @@
         "tabs",
         "webRequest",
         "webRequestBlocking",
-        "*://*.bestbuy.com",
+        "*://*.bestbuy.com/",
         "*://*.bestbuy.com/cart/api/v1/addToCart"
     ],
     "browser_action": {

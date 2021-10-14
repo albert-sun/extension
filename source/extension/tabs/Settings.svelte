@@ -29,18 +29,20 @@
 </script>
 
 <div class="flex-column column-spacing-small content">
-    {#each Object.entries($settings || {}) as [categoryKey, categoryData]}
-        <p class="header">{settingLabels[categoryKey].display}</p>
-        {#if settingLabels[categoryKey].description !== undefined}
-            <p>{settingLabels[categoryKey].description}</p>
+    <!-- Iterate over labels instead of settings to preserve order -->
+    {#each Object.entries(settingLabels) as [labelCategoryKey, labelCategoryData]}
+        <p class="header">{labelCategoryData.display}</p>
+        {#if labelCategoryData.description !== undefined}
+            <p>{labelCategoryData.description}</p>
         {/if}
         <table class="settings-wrapper">
-            {#each Object.entries(categoryData) as [settingKey, settingData]}
-                <!-- Don't bind value, only as initial input -->
-                <InputValue display={settingLabels[categoryKey].settings[settingKey].display}
-                    value={settingData}
-                    args={settingLabels[categoryKey].settings[settingKey].args || {}}
-                    on:update={event => { updateSettings(event, categoryKey, settingKey) }}/>
+            {#each Object.entries(labelCategoryData.settings) as [labelSettingKey, labelSettingData]}
+                <!-- Don't bind, only care about initial setting value
+                Convoluted mess of || because of {} initial render -->
+                <InputValue display={labelSettingData.display}
+                    value={(($settings || {})[labelCategoryKey] || {})[labelSettingKey]}
+                    args={labelSettingData.args || {}}
+                    on:update={event => { updateSettings(event, labelCategoryKey, labelSettingKey) }}/>
             {/each}
         </table>
         <br>

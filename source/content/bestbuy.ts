@@ -34,9 +34,7 @@ async function processAddtoCart(sku: string, a2cTransactionReferenceId?: string,
         "credentials": "include",
     });
 
-    return response.status === 200
-        ? "success" : response.status === 400
-        ? "failure" : "error"; // Return depending on status code
+    return response.status
 }
 
 // General startup routine for content script

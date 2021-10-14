@@ -1,7 +1,7 @@
 {
-  "name": "graphics-queue-utilities",
+  "name": "akitos-automated-utilities",
   "version": "1.0.0",
-  "description": "Partially-automated utilities for purchasing graphics cards",
+  "description": "Automated utilities for websites to aid in purchasing graphics cards",
   "main": "index.js",
   "scripts": {
     "prod": "webpack --config webpack/webpack.prod.js",

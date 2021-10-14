@@ -7,7 +7,7 @@
     import TabHeader from "../components/TabHeader.svelte";
     import { bestBuyDisplays, defaultSettings, extensionSelf, rawBestBuyItems } from "../../shared/constants";
     import type { AccordionData, AccordionItemData, BestBuyQueuesData, Setter, Settings } from "../../shared/types";
-    import { extensionLog, initializeStore, sendMessageToContent } from "../../shared/utilities";
+    import { extensionLog, initializeStore, sendMessageToBackground, sendMessageToContent } from "../../shared/utilities";
     
     const self = extensionSelf;
     const urlMatch = "https://*.bestbuy.com/*";
@@ -24,7 +24,11 @@
         extensionLog("extension", `Attempting to add ${productName} to cart from extension`);
 
         // Throw and forget message, background automatically intercepts queue
-        await sendMessageToContent("extension", "bestbuy", "process-atc", [sku]);
+        const response = await sendMessageToContent("extension", "bestbuy", "process-atc", [sku]);
+        if(response.payload === 200) { 
+            // Play notification sound from background page on success
+            sendMessageToBackground(self, "successful-cart", [sku]);
+        }
     }
 
     // Delete given queue and broadcast update
@@ -64,7 +68,7 @@
         // Update accordion queues and force re-render?
         accordionQueues = {
             "queues": {
-                display: `${accordionQueueData.length} Queue(s) (Sorted Closest -> Farthest)`,
+                display: `${accordionQueueData.length} Queue(s) (Sorted Soonest -> Latest Available)`,
                 items: accordionQueueData,
             }
         };
@@ -119,12 +123,12 @@
     <!-- Queue tracking section with collapsible accordion -->
     <p class="header">Currently Tracked Queues</p>
     <p>
-        Queues currently being tracked by the extension - background script 
-        automatically broadcasts add-to-cart requests with the attached queue  
-        payload when it becomes valid. Failed requests are retried every interval 
-        (see relevant settings) until the queue expires (about five minutes) 
-        - note that spamming add-to-cart requests can potentially lead to 
-        rate-limiting from Best Buy.
+        Queues currently being tracked by the extension - background script
+        automatically intercepts and tracks response queues, then broadcasts
+        add-to-cart requests with the attached queue headers paylaod. Failed
+        requests are also retried periodically (see relevant settings) until
+        the queue expires (in about five minutes). Note that spamming 
+        add-to-cart requests can potentially lead to rate-limiting.
     </p>
     <Accordion accordionData={accordionQueues}
         defaultProps={defaultQueueProps}

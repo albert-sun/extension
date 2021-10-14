@@ -98,6 +98,8 @@
         display: flex;
         flex-direction: row;
     }
+    :global(.row-spacing-tiny > *) { margin-right: 0.25em; }
+    :global(.row-spacing-tiny > :last-child) { margin-right: 0px; }
     :global(.row-spacing-small > *) { margin-right: 0.5em; }
     :global(.row-spacing-small > :last-child) { margin-right: 0px; }
     :global(.row-spacing-large > *) { margin-right: 1em; }
@@ -108,6 +110,8 @@
         display: flex;
         flex-direction: column;
     }
+    :global(.column-spacing-tiny > *) { margin-bottom: 0.25em; }
+    :global(.column-spacing-tiny > :last-child) { margin-bottom: 0px; }
     :global(.column-spacing-small > *) { margin-bottom: 0.5em; }
     :global(.column-spacing-small > :last-child) { margin-bottom: 0px; }
     :global(.column-spacing-large > *) { margin-bottom: 1em; }

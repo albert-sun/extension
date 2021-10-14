@@ -46,15 +46,12 @@ export async function initializeStore<Type>(self: string, key: string, defaultVa
     browser.runtime.onMessage.addListener(async (message, sender) => {
         // Check whether key matches and perform update or deletion
         const request = message as MessageRequest;
-        console.log(request);
         if(request.handler === "update-set") {
             // Deconstruct arguments and set/replace key in store
             const [storeKey, setKey, setValue] = request.args as [string, string, any];
             if(storeKey === key) { // Ensure key matches before setting
                 // DO NOT use setter, otherwise update broadcasts in loop
-                console.log(get(store));
                 store.update(value => { (value as any)[setKey] = setValue; return value });
-                console.log(get(store));
             }
         } else if(request.handler === "update-delete") {
             // Deconstruct arguments and delete key from store
@@ -100,7 +97,11 @@ export async function sendMessageToContent(self: string, target: string, handler
         status: "error",
         payload: "tab not found (shouldn't happen)",
     }; // Default response, overwritten if tab found
-    const tabs = await browser.tabs.query({ url: domainMatches[target] as string });
+    const tabs = await browser.tabs.query({ 
+        url: domainMatches[target] as string,
+        discarded: false,
+        status: "complete",
+    }); // Might cause issues with discarded tabs?
     if(tabs.length > 0) { 
         // Only process on first content script, assume tab ID defined
         response = await browser.tabs.sendMessage(tabs[0].id as number, request);
@@ -138,12 +139,7 @@ export function messageProcessHandlers(contentKey: string, handlers: MessageHand
 
                     extensionLog(contentKey, `Error processing handler ${request.handler}: ${errorMessage}`, "error");
                 }
-            } else {
-                extensionLog(contentKey, `Error, given handler ${request.handler} doesn't exist`, "error");
-
-                // Handler doesn't exist, return notify
-                response.status = "not-found";
-            }
+            } 
         }
 
         return response;
@@ -165,4 +161,12 @@ export async function storageGet<Type>(key: string, defaultValue: Type): Promise
 export async function storageSet<Type>(key: string, value: Type) {
     // Store using the given key and value
     await browser.storage.local.set({ [key]: value });
+}
+
+// Opens URL instead of using href attribute for anchor
+export function openPage(url: string, active = false) {
+    browser.tabs.create({
+        url: url,
+        active: active,
+    });
 }
