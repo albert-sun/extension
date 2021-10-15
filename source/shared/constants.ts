@@ -80,7 +80,7 @@ export const settingLabels: SettingLabels = {
                 display: "Show desktop notification on queue interception"
             },
             "notificationRateLimit": {
-                display: "Show desktop notification on potential rate-limiting (403/500)"
+                display: "Show desktop notification on potential rate-limiting"
             },
         }
     }

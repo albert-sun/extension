@@ -29,7 +29,7 @@
                 type: "basic",
                 title: title,
                 message: message,
-                iconUrl: "../resources/icon_512.png",
+                iconUrl: "../resources/icon_512_dark.png",
             });
         }
 
@@ -109,11 +109,6 @@
                                 const response = await sendMessageToContent(self, "bestbuy", "process-atc", [sku, queueData]);
                                 if(response.payload === 200) {
                                     extensionLog("background-bestbuy", `Successfully added SKU ${sku} to cart`);
-                                
-                                    // Construct for sending notification with sound
-                                    const title = "Best Buy - Successfully Carted";
-                                    const message = bestBuyDisplays[sku];
-                                    await soundNotification("success", title, message, ["bestbuy-notifications", "notificationSuccess"])
 
                                     // Perform deletion using custom logic
                                     delete skuQueueData[a2cTransactionReferenceId];
@@ -126,11 +121,6 @@
                                     blacklisted.add(queueData.a2cTransactionReferenceId);
 
                                     extensionLog("background-bestbuy", `Failed to add SKU ${sku} to cart: status ${response.payload}`);
-
-                                    // Construct for sending notification with sound
-                                    const title = "Best Buy - Failed to cart";
-                                    const message = bestBuyDisplays[sku];
-                                    await soundNotification("failure", title, message, ["bestbuy-notifications", "notificationFailure"])
 
                                     // Don't delete, let user manually retry and automatically dump old
                                     /* delete skuQueueData[a2cTransactionReferenceId];

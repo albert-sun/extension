@@ -36,13 +36,30 @@ async function processAddtoCart(sku: string, a2cTransactionReferenceId?: string,
     });
 
     // Show notification notifying of potential rate-limit?
-    if(response.status !== 200 && response.status !== 400) {
+    const productName = bestBuyDisplays[sku];
+    if(response.status === 200) {
         // Construct for sending notification with sound
-        const productName = bestBuyDisplays[sku];
+        const title = "Best Buy - Successfully Carted";
+        const message = productName;
+        await sendMessageToBackground(self, "sound-notification", [
+            "success", title, message, 
+            ["bestbuy-notifications", "notificationSuccess"],
+        ]); // Send category and settings key instead of setting
+    } if(response.status === 400) {
+        // Construct for sending notification with sound
+        const title = a2cTransactionCode !== undefined
+            ? "Best Buy - Failed to Cart" : "Best Buy - Failed to Cart With Queue";
+        const message = productName;
+        await sendMessageToBackground(self, "sound-notification", [
+            "failure", title, message, 
+            ["bestbuy-notifications", "notificationFailure"],
+        ]); // Send category and settings key instead of setting
+    } else if(response.status !== 200) {
+        // Construct for sending notification with sound
         const title = "Best Buy - Potential Rate-Limiting";
         const message = `[${productName}] Potential rate-limiting on add-to-cart request with status ${response.status}, try reloading the tab!`;
-        sendMessageToBackground(self, "sound-notification", [
-            "success", title, message, 
+        await sendMessageToBackground(self, "sound-notification", [
+            "rateLimit", title, message, 
             ["bestbuy-notifications", "notificationRateLimit"],
         ]); // Send category and settings key instead of setting
     }
