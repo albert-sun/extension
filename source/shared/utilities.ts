@@ -70,7 +70,7 @@ export async function initializeStore<Type>(key: string, defaultValue: Type) {
 // Resolve/reject wrapper for sending messages to background
 // Currently doesn't implement timeout but maybe later?
 async function sendMessageBackground(
-    request: BroadcastedRequest
+    request: BroadcastedRequest,
 ): Promise<BroadcastedResponse | string> {
     return await new Promise((resolve) => {
         browser.runtime.sendMessage(request)
@@ -80,14 +80,14 @@ async function sendMessageBackground(
 }
 
 // Initializes wrapper for sending messages from content script with key and params
-export async function sendRequestBackground(handler: string, args: any[] = []): Promise<BroadcastedResponse> {
+export async function sendRequestBackground(handler: string, args: any[] = []): Promise<BroadcastedResponse | string> {
     // Construct request from parameters
     const request: BroadcastedRequest = {
         handler, args,
     }; 
 
     // Send message and wait for response
-    const response = await browser.runtime.sendMessage(request) as BroadcastedResponse;
+    const response = await sendMessageBackground(request);
     
     return response;
 };

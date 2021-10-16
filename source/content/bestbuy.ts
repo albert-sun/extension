@@ -6,7 +6,7 @@ import { extensionLog, messageProcessHandlers, sendRequestBackground } from "../
 const self = contentSelf; // Content script identifier
 const messageHandlers: MessageHandlers = {
     "ping": contentPing,
-    "process-atc": processAddtoCart,
+    "process-add_to_cart": processAddtoCart,
 }; // Message handlers for processing from Messages API
 
 // Send add-to-cart request, optionally with (assuming popped) queue data
@@ -45,7 +45,11 @@ async function processAddtoCart(
         // Not success or failure probably means error, notify reload
         execute = "reload";
     }
-
+    
+    console.log({
+        value: addResponse.status,
+        execute,
+    })
     return {
         value: addResponse.status,
         execute,

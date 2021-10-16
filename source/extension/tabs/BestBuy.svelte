@@ -23,15 +23,9 @@
         extensionLog("extension", `Attempting to add ${productName} to cart from extension`);
 
         // Queue add-to-cart request sequentially
-        // TODO show error if tab not found?
-        const request: StreamlinedRequestRaw = {
-            urlMatch: "bestbuy",
-            handler: "process-atc",
-            args: [sku],
-        };
         await sendRequestBackground(
-            "add-request", 
-            [request],
+            "process-add_to_cart",
+            [sku],
         );
     }
 

@@ -6,8 +6,7 @@ const prod = mode === 'production';
 
 // Source files for outputting individual files
 const individualFilenames = {
-    "public/resources/background_main": "/source/background/background.ts",
-    "public/resources/background_bestbuy": "/source/background/bestbuy.ts",
+    "public/resources/background": "/source/background/background.ts",
     "public/resources/content_bestbuy": "/source/content/bestbuy.ts",
     "public/resources/extension": "/source/extension/extension.ts",
 }; // TODO make modular or something, skip other files

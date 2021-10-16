@@ -1,10 +1,9 @@
 <script lang="ts">
     import Button from "./Button.svelte";
-    import { bestBuyDisplays, extensionSelf } from "../../shared/constants";
+    import { bestBuyDisplays } from "../../shared/constants";
     import type { ProductQueueData } from "../../shared/types";
     import { extensionLog, openPage, sendRequestBackground } from "../../shared/utilities";
     import { minutesSeconds } from "../utilities";
-import type { StreamlinedRequestRaw, StreamlinedResponse } from "../../shared/types_new";
 
     export let remainingTime: number;        // [INPUT] Remaining time before queue pop, in milliseconds
     export let sku: string;                  // [INPUT] Product SKU for manual add-to-cart or page button
@@ -29,7 +28,7 @@ import type { StreamlinedRequestRaw, StreamlinedResponse } from "../../shared/ty
 
         // Queue add-to-cart request 
         await sendRequestBackground(
-            "process-atc",
+            "process-add_to_cart",
             [sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode],
         ); // Send to background script which processes sequentially
     }

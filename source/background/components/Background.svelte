@@ -1,20 +1,61 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import type { Writable } from "svelte/store";
-    import { settingLabels } from "../../shared/constants";
-    import type { MessageHandlers, Setter, Settings } from "../../shared/types";
+    import { decodeQueue, minutesSeconds } from "../../extension/utilities";
+    import { bestBuyDisplays, settingLabels } from "../../shared/constants";
+    import type { BestBuyQueuesData, BestBuySKUQueuesData, MessageHandlers, ProductQueueData, QueueData, Setter, Settings } from "../../shared/types";
     import { BroadcastedRequest, BroadcastedResponse, pingRequest, StreamlinedRequest, StreamlinedRequestRaw, StreamlinedResponse } from "../../shared/types_new";
     import { domainMatches, extensionLog, initializeStore, messageProcessHandlers } from "../../shared/utilities";
     import { sleep } from "../../shared/utilities";
 
+    interface AddToCartBody { 
+        items: { skuId: string }[]; 
+    }; // Body sent with addToCart POST request
+
     // Declare stores initially to avoid errors
+    let queues: Writable<BestBuyQueuesData>;
+    let setQueues: Setter;
     let settings: Writable<Settings>; 
     let setSettings: Setter;
     // Streamlined execution of queued execution from background and extension
+    const backgroundSelf = "background"; // For logging
     const queuedRequests: StreamlinedRequest[] = [];
     let executing: boolean = false; // Whether execution is currently happening
+    let notifications: { [key: string]: HTMLAudioElement };
+    // Best Buy variables
+    const bestBuySelf = "background-bestbuy"; // For logging
+    const bestBuyCartURL = "https://www.bestbuy.com/cart";
+    const bestBuyTabURL = "https://www.bestbuy.com/"; // For auto-opening tabs
 
-    // Resolve/reject wrapper for sending messages to tab
+    // background: Play corresponding notification sound and show notification
+    async function soundNotification(
+        soundKey: string, title: string, message: string, settingKeys: [string, string], buttons?: string[]
+    ): Promise<string | undefined> {
+        // Show desktop notification through API if desired
+        let notificationId: string | undefined;
+        if($settings[settingKeys[0]][settingKeys[1]] === true) {
+            // Can't use webextension-polyfill because of lack of promise support
+            notificationId = await new Promise((resolve) => {
+                // Of course Chrome doesn't support async/await 
+                chrome.notifications.create({
+                    type: "basic",
+                    title: title,
+                    message: message,
+                    iconUrl: "../resources/icon_512_dark.png",
+                    buttons: buttons?.map(title => ({ title: title })),
+                }, function(id: string) {
+                    resolve(id);
+                });
+            });
+        }
+
+        // Always play notification sound with given key 
+        notifications[soundKey].play();
+
+        return notificationId;
+    }
+
+    // background: Resolve/reject wrapper for sending messages to tab
     // Currently doesn't implement timeout but maybe later?
     async function sendMessageTab(
         tabId: number, request: BroadcastedRequest
@@ -26,7 +67,7 @@
         });
     }
 
-    // Periodically ping tab until response (ready)
+    // background: Periodically ping tab until response (ready)
     // Note that unresponsive tabs will get pinged forever
     async function pingTabReady(tabId: number, ready: boolean = true) {
         // Keep pinging until tab responds
@@ -39,7 +80,7 @@
         }
     }
 
-    // Execute queued requests streamlined on stimulus from message handler
+    // background: execute queued requests streamlined on stimulus from message handler
     async function performStreamlinedRequests() {
         // Only want one instance running at a time, use pseudo-lock
         if(executing === true) {
@@ -57,7 +98,7 @@
             };
 
             const serializedRequest = JSON.stringify(queuedRequest);
-            extensionLog("background", `Executing queued request with body ${serializedRequest}`);
+            extensionLog(backgroundSelf, `Executing queued request with body ${serializedRequest}`);
 
             // Check whether tabs matching given URL match exist
             const urlGlob = domainMatches[queuedRequest?.urlMatch];
@@ -67,7 +108,7 @@
                 // status: "loading" // Can't communicate with loading tab
             });
             if(matchingTabs.length === 0) {
-                extensionLog("background", `Couldn't find matching tabs with glob ${urlGlob}, placeholder resolving with undefined`);
+                extensionLog(backgroundSelf, `Couldn't find matching tabs with glob ${urlGlob}, placeholder resolving with undefined`);
 
                 // Perform execution depending on setting
                 // For now, resolve with undefined but maybe open tab?
@@ -76,17 +117,17 @@
 
             // Iterate over tabs and attempt communication
             for(const tab of matchingTabs) {
-                extensionLog("background", `Attempting to ping tab with ID ${tab.id} and URL ${tab.url}`);
+                extensionLog(backgroundSelf, `Attempting to ping tab with ID ${tab.id} and URL ${tab.url}`);
 
                 // Perform ping and check whether tab responds
                 const pingResponse = await sendMessageTab(tab.id as number, pingRequest);
                 if(typeof pingResponse === "string") { // Failed to communicate with tab
-                    extensionLog("background", `Error pinging content script: ${pingResponse}`);
+                    extensionLog(backgroundSelf, `Error pinging content script: ${pingResponse}`);
 
                     continue;
                 }
 
-                extensionLog("background", `Received successful ping response, broadcasting request`);
+                extensionLog(backgroundSelf, `Received successful ping response, broadcasting request`);
 
                 // Tab properly responded to ping, send actual request
                 const request: BroadcastedRequest = {
@@ -103,7 +144,7 @@
 
                 // Check whether tab responded with request for execution
                 if(response.payload.execute !== undefined) {
-                    extensionLog("background", `Response received, performing execution handler ${response.payload.execute}`);
+                    extensionLog(backgroundSelf, `Response received, performing execution handler ${response.payload.execute}`);
 
                     if(response.payload.execute === "reload") {
                         // Reload current tab, idle until reloading complete (ping successful)
@@ -111,14 +152,14 @@
                         await pingTabReady(tab.id as number);
                     }
                 } else {
-                    extensionLog("background", `Response received, no execution handler necessary`);
+                    extensionLog(backgroundSelf, `Response received, no execution handler necessary`);
                 }
 
                 break; // Only send request a single time
             }
 
             const serializedResponse = JSON.stringify(queuedResponse);
-            extensionLog("background", `Finished processing queued request, responding with body ${serializedResponse}`);
+            extensionLog(backgroundSelf, `Finished processing queued request, responding with body ${serializedResponse}`);
 
             // Resolve with either payload or not found
             queuedRequest.resolve(queuedResponse);
@@ -127,9 +168,9 @@
         executing = false; // Unlock running instance
     }
 
-    // Add a streamlined request to queued and idle until response
+    // background: Add a streamlined request to queued and idle until response
     async function addStreamlinedRequest(newRequest: StreamlinedRequestRaw): Promise<StreamlinedResponse> {
-        extensionLog("background", `Pushing request to back of queue for streamlined execution`);
+        extensionLog(backgroundSelf, `Pushing request to back of queue for streamlined execution`);
         
         // Push new request to existing queue and wait for completion
         return new Promise((resolve) => {
@@ -143,19 +184,210 @@
         });
     }
 
-    // Creates new tab with specified URL and block until ready
-    async function createTabReady(url: string) {
+    // background: Creates new tab with specified URL and block until ready
+    async function createTabReady(url: string, wait: boolean = true) {
         // Initialize and periodically ping until response
         const tab = await browser.tabs.create({
             active: false,
             url,
         });
-        await pingTabReady(tab.id as number);
+        
+        // Only wait for load complete if desired
+        if(wait === true) {
+            await pingTabReady(tab.id as number);
+        }
+    }
+
+    // background-bestbuy: Merge product queues from page with currently tracked queues
+    async function mergeProductQueues(mergeQueueData: QueueData) {
+        // Iterate over browser queue for each SKU, merging unseen with currently tracked
+        const currentTime = new Date().getTime(); // In milliseconds from epoch
+        for(const [sku, skuQueueData] of Object.entries(mergeQueueData)) {
+            // Check whether queue with given ID is being tracked
+            const existingQueues = $queues[sku] || {};
+            if(existingQueues[skuQueueData[1]] === undefined) {
+                // Decode queue and remaining time from data
+                const [startTime, a2cTransactionReferenceId, a2cTransactionCode] = skuQueueData;
+                const queueTime = decodeQueue(skuQueueData[1]); 
+                const remainingTime = startTime + queueTime - currentTime;
+                
+                // Don't bother adding if queue already expired
+                if(remainingTime > -5 * 60 * 1000) {
+                    // Construct and store queue data for given SKU
+                    const queueData = { startTime, a2cTransactionReferenceId, a2cTransactionCode, queueTime };
+                    const existingQueues = $queues[sku] || {};
+                    existingQueues[a2cTransactionReferenceId] = queueData;
+                    setQueues(sku, existingQueues);
+                }
+            }
+        }
+    }
+
+    // background-bestbuy: Update and replace queues for given existing queues, keeping the shortest
+    function updateReplaceQueues(
+        existingQueues: BestBuySKUQueuesData, newQueueData: ProductQueueData, startTime: number
+    ): [boolean, number, number] {
+        // Deconstruct current queues into remaining time
+        const existingQueuesMapped = Object.entries(existingQueues)
+            .map(([queueKey, queueData]) => {
+                const remainingTime = queueData.startTime + queueData.queueTime - startTime;
+                return [remainingTime, queueKey, queueData] as [number, string, ProductQueueData];
+            }); // [remaining, queueKey, queueData]
+
+        // Sort before adding new queue, inefficient I know
+        existingQueuesMapped.sort((queue1, queue2) => { return queue1[0] - queue2[0] });
+        const previousBestRemaining = existingQueuesMapped[0][0];
+
+        // Check whether previous queue time(s) are shorter 
+        const newQueueKey = newQueueData.a2cTransactionReferenceId;
+        const newRemaining = newQueueData.startTime + newQueueData.queueTime - startTime;
+        existingQueuesMapped.push([newRemaining, newQueueKey, newQueueData]);
+
+        // Sort and check whether ID of first index switches to new
+        existingQueuesMapped.sort((queue1, queue2) => { return queue1[0] - queue2[0] });
+        const [diffMinutes, diffSeconds, diffNegative] = minutesSeconds(previousBestRemaining - newRemaining, true);
+        const shorter = existingQueuesMapped[0][1] === newQueueData.a2cTransactionReferenceId;
+
+        // Trim everything but the shortest queue
+        existingQueues = {};
+        existingQueues[newQueueData.a2cTransactionReferenceId] = newQueueData;
+
+        return [shorter, diffMinutes, diffSeconds];
+    }
+
+    // background-bestbuy: Wrapper for processing add-to-cart by broadcasting to streamline handler
+    // Depending on settings and result status, plays sound and shows notifications
+    async function processAddToCart(
+        sku: string, a2cTransactionReferenceId?: string, a2cTransactionCode?: string
+    ) {
+        // Construct request for broadcasting to streamlined
+        const streamlinedRequest: StreamlinedRequestRaw = {
+            urlMatch: "bestbuy",
+            handler: "process-add_to_cart",
+            args: [sku, a2cTransactionReferenceId, a2cTransactionCode],
+        };
+
+        // Keep broadcasting request until response gotten
+        let response: BroadcastedResponse;
+        do {
+            // Broadcast request and idle until response received (processed sequentially)
+            let streamlinedResponse = await addStreamlinedRequest(streamlinedRequest);
+            if(streamlinedResponse.status === "not-found") { // Failed to communicate with background
+                // Check relevant global setting for action
+                if($settings["global"]["autoOpenTab"] === true) {
+                    extensionLog(bestBuySelf, `Matching tab not found, creating new tab with url ${bestBuyTabURL}`);
+
+                    // Automatically open Best Buy tab and idle until ready before re-sending
+                    await createTabReady(bestBuyTabURL);
+                    
+                    extensionLog(bestBuySelf, `Tab creation finished, re-broadcasting initial request`);
+                    
+                    continue;
+                } else { 
+                    extensionLog(bestBuySelf, `Matching tab not found, showing notification and exiting`);
+
+                    // Instead, just show notification and play sound
+                    const title = "Best Buy - Tab Not Found";
+                    const message = "Matching tab not found or content script not responding. Open a matching tab or try reloading the page.";
+                    const notificationId = await soundNotification("error", title, message, ["global", "notificationNotFound"]);
+                    if(notificationId !== undefined) {
+                        // Attach onclick for opening new tab manually
+                        if(notificationId !== undefined) { // Means notification displayed
+                            // Are there issues with memory leaks when listeners are added?
+                            browser.notifications.onButtonClicked.addListener(async function(_, buttonIndex) {
+                                // 0 index means open cart page
+                                if(buttonIndex === 0) {
+                                    // Create tab but don't waste resources pinging loading
+                                    await createTabReady(bestBuyTabURL, false);
+                                }
+                            });
+                        }
+                    }
+
+                    return true;
+                }
+            }
+            response = streamlinedResponse.payload as BroadcastedResponse;
+
+            break;
+        } while(true); // Keep looping, usually only requires single iteration
+
+        // Show notification and play sound depending on status and settings            
+        // Initialize variables in advance to prevent hard-coding?
+        // TODO streamline callbacks and sending under if/else statements
+        let title: string; let message: string; 
+        let settingKeys: [string, string]; let buttons: string[];
+        const productName = bestBuyDisplays[sku];
+        if(response.result === "okay") {
+            // Handler ran okay, peform default actions
+            if(response.payload.value === 200) {
+                // Successfully carted (might not show in cart though)
+                extensionLog(bestBuySelf, `Successfully added ${productName} to cart`);
+
+                // Broadcast notification and attach onclick handler
+                title = "Best Buy - Successful Cart";
+                message = productName;
+                settingKeys = ["bestbuy", "notificationSuccess"];
+                buttons = ["Open cart page"];
+                const notificationId = await soundNotification("success", title, message, settingKeys, buttons);
+                if(notificationId !== undefined) { // Means notification displayed
+                    // Are there issues with memory leaks when listeners are added?
+                    browser.notifications.onButtonClicked.addListener(async function(_, buttonIndex) {
+                        // 0 index means open cart page
+                        if(buttonIndex === 0) {
+                            // Create tab but don't waste resources pinging loading
+                            await createTabReady(bestBuyCartURL, false);
+                        }
+                    });
+                }
+            } else if(response.payload.value === 400) {
+                // Failed to cart (either invalid queue or not avialable)
+                extensionLog(bestBuySelf, `Failed to cart ${productName}, either invaild queue or unavailable`);
+
+                // Broadcast notification, no onclick needed to re-queue?
+                title = "Best Buy - Failed to Cart";
+                message = productName;
+                settingKeys = ["bestbuy", "notificationFailure"];
+                await soundNotification("failure", title, message, settingKeys);
+            } else {
+                // Server error (500 rate limit, 403 rate limit or uncartable)
+                // Can't reload tab from notification button because tab ID not returned, TODO?
+                extensionLog(bestBuySelf, `Error carting ${productName} with status ${status}`);
+
+                // Broadcast notification, no onclick needed to re-queue?
+                title = `Best Buy - Error ${status}`;
+                if($settings["bestbuy"]["autoReload"] === true) {
+                    message = `Error carting ${productName} - possible rate limiting, auto-reloading tab`;
+                } else {
+                    message = `Error carting ${productName} - possible rate limiting, not auto-reloading tab`;
+                }
+                settingKeys = ["bestbuy", "notificationError"];
+                await soundNotification("error", title, message, settingKeys);
+            }
+        } /*else {
+            // Handler errored, display as notification
+            extensionLog(bestBuySelf, `Error performing handler ${"process-add_to_cart"}: ${response.payload}`);
+
+            title = "Extension Error for 'Best Buy'";
+            message = response.payload.value;
+            settingKeys = ["global", "notificationError"];
+            await soundNotification("error", title, message, settingKeys);
+        }*/
+
+        return false;
     }
     
     // Does not include destructor, don't care
     onMount(async function() {
-        // Initialize settings store from storage and merge with version updates
+        // background: Load notification sounds from resource file for playing
+        notifications = {
+            "success": new Audio("../resources/notification_success.mp3"),
+            "failure": new Audio("../resources/notification_queue.mp3"),
+            "queue": new Audio("../resources/notification_queue.mp3"),
+            "error": new Audio("../resources/notification_ratelimit.mp3"),
+        };
+
+        // background: Initialize settings store from storage and merge with version updates
         ({ store: settings, set: setSettings } = await initializeStore<Settings>( "settings", {}));
         for(const [categoryKey, categoryData] of Object.entries(settingLabels)) {
             // Check whether the given settings category exists
@@ -183,11 +415,161 @@
             }
         }
 
+        // background-bestbuy: Initialize queues store and initial queue count
+        ({ store: queues, set: setQueues } = await initializeStore<BestBuyQueuesData>( "queues", {}));
+        let initialQueues = 0;
+        for(const [sku, skuQueueData] of Object.entries($queues)) {
+            initialQueues += Object.keys(skuQueueData).length;
+        }
+        extensionLog(bestBuySelf, `Startup routine, retrieved and tracking ${initialQueues} existing queues from storage`);
+        
+        // background-bestbuy: Initialize periodic interval for checking queues
+        // Automatically broadcast add-to-cart to content script when queue elapsed
+        const blacklisted: Set<string> = new Set(); // Failed queues to ignore for automatic adding
+        setInterval(async function() {
+            // Iterate over SKU data and individual queues within checking for readiness
+            const currentTime = new Date().getTime(); // In milliseconds from epoch
+            for(const [sku, skuQueueData] of Object.entries($queues)) {
+                for(const [a2cTransactionReferenceId, queueData] of Object.entries(skuQueueData)) {
+                    // Check whether queue popped, if so broadcast both add-to-cart and deletion
+                    const remainingTime = queueData.startTime + queueData.queueTime - currentTime;
+                    if(remainingTime <= 0) {
+                        // Only add and notify if not expired, otherwise silently delete
+                        if(remainingTime > -5 * 60 * 1000) {
+                            // Check whether setting to auto-add is enabled before proceeding
+                            if($settings["bestbuy"]["autoAddQueue"] === true && blacklisted.has(queueData.a2cTransactionReferenceId) === false) {
+                                extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, broadcasting add-to-cart request`);
+                            
+                                // Process add-to-cart sequentially with other requests
+                                const errored = await processAddToCart(sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode);
+                                if(errored === true) { // Errored, add to blacklist
+                                    blacklisted.add(queueData.a2cTransactionReferenceId);
+                                }
+                            } else {
+                                extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, waiting for manual because of setting`);
+                            }
+                        } else {
+                            extensionLog("background-bestbuy", `Queue popped but expired for ${sku}, silently deleting`);
+                        
+                            // Remove from set of blacklisted if found
+                            blacklisted.delete(queueData.a2cTransactionReferenceId);
+
+                            // Perform deletion using custom logic
+                            delete skuQueueData[a2cTransactionReferenceId];
+                            setQueues(sku, skuQueueData);
+                        }
+                    }
+                }
+            }
+        }, 1000); // Default check every second 
+
+        // background-bestbuy: Register webRequest listeners for intercepting Best Buy add-to-cart requests
+        const requestBodyCache: { [requestId: string]: AddToCartBody } = {};
+        chrome.webRequest.onBeforeRequest.addListener(function(details) {
+            // Ignore for GET requests which should never happen
+            if(details.requestBody !== undefined) {
+                // Complicated process to decode request body to string...
+                const decodedBody = decodeURIComponent(String.fromCharCode.apply(null, // @ts-ignore
+                    new Uint8Array(details.requestBody.raw[0].bytes))); 
+                const parsedBody = JSON.parse(decodedBody) as AddToCartBody;
+                requestBodyCache[details.requestId] = parsedBody;
+
+                // Prepare list of SKU(s) for output from parsed body
+                const skus = parsedBody.items.map(item => item.skuId);
+                const serializedSKUs = JSON.stringify(skus);
+
+                extensionLog("background-bestbuy", `[webRequest.onBeforeRequest] Finished caching POST body for request ${details.requestId} with SKU(s) ${serializedSKUs}`, "debug");
+            }
+        }, { urls: ["*://*.bestbuy.com/cart/api/v1/addToCart"]}, ["requestBody", "blocking"]); 
+        chrome.webRequest.onBeforeSendHeaders.addListener(function(details) {
+            // Parse payload from cached request body
+            const cachedBody = requestBodyCache[details.requestId]; // In case if somehow not cached
+            if(cachedBody === undefined) {
+                // Cached body doesn't exist, shouldn't happen
+                extensionLog("background-bestbuy", `[webRequest.onBeforeSendHeaders] Couldn't find cached POST body for request ${details.requestId}`, "error");
+                
+                return;
+            } 
+        }, { urls: ["*://*.bestbuy.com/cart/api/v1/addToCart"]}, ["requestHeaders", "blocking"]);
+        chrome.webRequest.onHeadersReceived.addListener(function(details) {
+            // Track whether headers found before adding
+            let a2cTransactionReferenceId = "";
+            let a2cTransactionCode = "";
+            for(const header of (details.responseHeaders || [])) {
+                if(header.name === "a2ctransactionreferenceid") {
+                    a2cTransactionReferenceId = header.value as string;
+                } else if(header.name === "a2ctransactioncode") {
+                    a2cTransactionCode = header.value as string;
+                }
+            }
+
+            // If both headers exist and setting enabled, add queue using sku from cached body
+            if((details.statusCode !== 200 || $settings["bestbuy"]["requeueSuccess"] === true)
+                && a2cTransactionReferenceId !== "" && a2cTransactionCode !== "") {
+                // Retrieve SKU from cached request body, assume SKU is desired
+                const cachedBody = requestBodyCache[details.requestId]; // In case if somehow not cached
+                if(cachedBody === undefined) {
+                    // Cached body doesn't exist, shouldn't happen
+                    extensionLog("background-bestbuy", `[webRequest.onHeadersReceived] Couldn't find cached POST body for request ${details.requestId}`, "error");
+                    
+                    return;
+                }
+                const sku = cachedBody.items[0]?.skuId; // Assume always defined
+
+                // Decode remaining queue time from a2ctransactioncode
+                const startTime = new Date().getTime(); // In milliseconds from epoch
+                const queueTime = decodeQueue(a2cTransactionCode); 
+                const [minutes, seconds] = minutesSeconds(queueTime); // Only for debugging purposes
+                const queueData: ProductQueueData = { startTime, a2cTransactionReferenceId, a2cTransactionCode, queueTime };
+
+                extensionLog("background-bestbuy", `[webRequest.onHeadersReceived] Queue response headers detected for request ${details.requestId} with time ${minutes}m ${seconds}s`);
+
+                // Construct and broadcast queue data through Writable
+                let message: string = ""; // To be filled within statements
+                const productName = bestBuyDisplays[sku];
+                let existingQueues = $queues[sku] || {};
+
+                // Either append to existing or replace queue depending on setting
+                if($settings["bestbuy"]["replaceQueue"] === true && Object.keys(existingQueues).length > 0) {
+                    // Perform replacement and check whether new queue improved
+                    // existingQueues updated within updateReplaceQueues when ran
+                    const [shorter, diffMinutes, diffSeconds] = updateReplaceQueues(existingQueues, queueData, startTime);
+                    if(shorter === true) {
+                        // Current queue has improvement, show notification
+                        message = `[${productName}] Queue replacement enabled, replacing with ${diffMinutes}m ${diffSeconds}s improvement`;
+                    } else {
+                        // No improvement, clear stragglers and show notification
+                        message = `[${productName}] Queue replacement enabled, not replacing because ${diffMinutes}m ${diffSeconds}s worse`;
+                    }
+                } else {
+                    message = `[${productName}] Intercepted new queue with timer ${minutes}m ${seconds}s`;
+
+                    // Otherwise, perform regular "appending" to queues
+                    existingQueues[a2cTransactionReferenceId] = queueData;
+                }
+                setQueues(sku, existingQueues);
+
+                // Construct for sending notification with sound
+                // Can't await soundNotification because async not allowed?
+                const title = "Best Buy - Queue Intercepted";
+                soundNotification("queue", title, message, ["bestbuy", "notificationQueue"]);
+            }
+
+            // Delete cached body with request ID to prevent memory leaks
+            delete requestBodyCache[details.requestId];
+        }, { urls: ["*://*.bestbuy.com/cart/api/v1/addToCart"]}, ["responseHeaders", "blocking"]);
+
         // Register Messages API listener for processing handlers
         const messageHandlers: MessageHandlers = {
+            // background
             "add-request": addStreamlinedRequest,
             "create-tab-ready": createTabReady,
+            "sound-notification": soundNotification,
+            // background-bestbuy
+            "get-bestbuy-product_queues": async function() { return $queues },
+            "merge-product_queues": mergeProductQueues,
+            "process-add_to_cart": processAddToCart,
         }; // Message handlers for processing from Messages API
-        messageProcessHandlers("background", messageHandlers, ["background", "extension"]);
+        messageProcessHandlers(backgroundSelf, messageHandlers, [backgroundSelf, "extension"]);
     });
 </script>

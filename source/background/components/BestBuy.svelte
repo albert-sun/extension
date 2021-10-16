@@ -113,7 +113,7 @@
         // Construct request for broadcasting to streamlined
         const streamlinedRequest: StreamlinedRequestRaw = {
             urlMatch: "bestbuy",
-            handler: "process-atc",
+            handler: "process-add_to_cart",
             args: [sku, a2cTransactionReferenceId, a2cTransactionCode],
         };
 
@@ -121,6 +121,11 @@
         let streamlinedResponse = await sendRequestBackground(
             "add-request", [streamlinedRequest],
         );
+        if(typeof streamlinedResponse === "string") { // Failed to communicate with background
+            extensionLog("background-bestbuy", `error performing add-to-cart request: ${streamlinedResponse}`);
+
+            return true;
+        }
 
         // Check whether no tabs available for communication
         while(streamlinedResponse.result === "not-found") { 
@@ -137,6 +142,11 @@
                 streamlinedResponse = await sendRequestBackground(
                     "add-request", [streamlinedRequest],
                 );
+                if(typeof streamlinedResponse === "string") { // Failed to communicate with background
+                    extensionLog("background-bestbuy", `error performing add-to-cart request: ${streamlinedResponse}`);
+
+                    return true;
+                }
             } else { 
                 extensionLog("background-bestbuy", `Matching tab not found, showing notification and exiting`);
 
@@ -218,7 +228,7 @@
                 }
             } else {
                 // Handler errored, display as notification
-                extensionLog("background-bestbuy", `Error performing handler ${"process-atc"}: ${streamlinedResponse.payload}`);
+                extensionLog("background-bestbuy", `Error performing handler ${"process-add_to_cart"}: ${streamlinedResponse.payload}`);
 
                 title = "Extension Error for 'Best Buy'";
                 message = streamlinedResponse.payload.value;
@@ -227,6 +237,8 @@
             }
         } else if(streamlinedResponse.result === "error") {
         }
+
+        return false;
     }
 
     // Does not include destructor, don't care
@@ -254,7 +266,7 @@
         const messageHandlers: MessageHandlers = {
             "sound-notification": soundNotification,
             "get-bestbuy-product_queues": async function() { return $queues },
-            "process-add-to-cart": processAddToCart,
+            "process-add_to_cart": processAddToCart,
             "merge-product_queues": mergeProductQueues,
         }; // Message handlers for processing from Messages API
         messageProcessHandlers("background", messageHandlers, ["content", "extension"]);
@@ -271,17 +283,17 @@
                     const remainingTime = queueData.startTime + queueData.queueTime - currentTime;
                     if(remainingTime <= 0) {
                         // Only add and notify if not expired, otherwise silently delete
-                        if(remainingTime > -5 * 60 * 1000 
-                            && blacklisted.has(queueData.a2cTransactionReferenceId) === false) {
+                        if(remainingTime > -5 * 60 * 1000) {
                             // Check whether setting to auto-add is enabled before proceeding
                             if($settings["bestbuy"]["autoAddQueue"] === true && blacklisted.has(queueData.a2cTransactionReferenceId) === false) {
                                 extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, broadcasting add-to-cart request`);
                             
                                 // Process add-to-cart sequentially with other requests
-                                await processAddToCart(sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode)
+                                const errored = await processAddToCart(sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode);
+                                if(errored === true) { // Errored, add to blacklist
+                                    blacklisted.add(queueData.a2cTransactionReferenceId);
+                                }
                             } else {
-                                blacklisted.add(queueData.a2cTransactionReferenceId);
-
                                 extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, waiting for manual because of setting`);
                             }
                         } else {
@@ -388,7 +400,7 @@
                 // Construct for sending notification with sound
                 // Can't await soundNotification because async not allowed?
                 const title = "Best Buy - Queue Intercepted"
-                soundNotification("queue", title, message, ["bestbuy-notifications", "notificationQueue"])
+                soundNotification("queue", title, message, ["bestbuy", "notificationQueue"])
             }
 
             // Delete cached body with request ID to prevent memory leaks

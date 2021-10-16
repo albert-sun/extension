@@ -54,7 +54,8 @@ export const settingLabels: SettingLabels = {
         }
     },
     "bestbuy": {
-        display: "Best Buy General Settings",
+        display: "Best Buy Settings",
+        description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable notifications if you're playing games!",
         settings: {
             "autoAddQueue": {
                 display: "Automatically process queue add-to-cart when popped",
@@ -72,12 +73,6 @@ export const settingLabels: SettingLabels = {
                 display: "Re-queue with response headers on successful cart",
                 default: true,
             },
-        }
-    },
-    "bestbuy-notifications": {
-        display: "Best Buy Notification Settings",
-        description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable notifications if you're playing games!",
-        settings: {
             "notificationSuccess": {
                 display: "Show desktop notification on successful cart",
                 default: true,
@@ -95,7 +90,7 @@ export const settingLabels: SettingLabels = {
                 default: true,
             },
         }
-    }
+    },
 };
 
 // Best Buy data for manual add-to-cart and display
