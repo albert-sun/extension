@@ -5,17 +5,16 @@
     import Button from "../components/Button.svelte";
     import QueueInfo from "../components/QueueInfo.svelte";
     import TabHeader from "../components/TabHeader.svelte";
-    import { bestBuyDisplays, defaultSettings, extensionSelf, rawBestBuyItems } from "../../shared/constants";
+    import { bestBuyDisplays, extensionSelf, rawBestBuyItems } from "../../shared/constants";
     import type { AccordionData, AccordionItemData, BestBuyQueuesData, Setter, Settings } from "../../shared/types";
-    import { extensionLog, initializeStore, sendMessageToBackground, sendMessageToContent } from "../../shared/utilities";
+    import { extensionLog, initializeStore, sendRequestBackground } from "../../shared/utilities";
+    import type { StreamlinedRequestRaw } from "../../shared/types_new";
     
-    const self = extensionSelf;
     const urlMatch = "https://*.bestbuy.com/*";
     const openURL = "https://www.bestbuy.com/";
     let matches = false; // Whether content script found
     let queues: Writable<BestBuyQueuesData>;
     let setQueues: Setter;
-    let settings: Writable<Settings>; // Read-only
 
     // When button clicked, add item to cart (without queue d ata)
     async function addToCart(sku: string) {
@@ -23,12 +22,17 @@
 
         extensionLog("extension", `Attempting to add ${productName} to cart from extension`);
 
-        // Throw and forget message, background automatically intercepts queue
-        const response = await sendMessageToContent("extension", "bestbuy", "process-atc", [sku]);
-        if(response.payload === 200) { 
-            // Play notification sound from background page on success
-            sendMessageToBackground(self, "successful-cart", [sku]);
-        }
+        // Queue add-to-cart request sequentially
+        // TODO show error if tab not found?
+        const request: StreamlinedRequestRaw = {
+            urlMatch: "bestbuy",
+            handler: "process-atc",
+            args: [sku],
+        };
+        await sendRequestBackground(
+            "add-request", 
+            [request],
+        );
     }
 
     // Delete given queue and broadcast update
@@ -107,8 +111,7 @@
     // Does not include destructor, don't care
     onMount(async function() {
         // Initialize various stores (ignore setter and deleter because read-only)
-        ({ store: queues, set: setQueues } = await initializeStore<BestBuyQueuesData>(self, "queues", {}));
-        ({ store: settings } = await initializeStore<Settings>(self, "settings", defaultSettings));
+        ({ store: queues, set: setQueues } = await initializeStore<BestBuyQueuesData>( "queues", {}));
         
         // Run re-render on interval and on queue update
         setInterval(() => { updateQueueData() }, 250);

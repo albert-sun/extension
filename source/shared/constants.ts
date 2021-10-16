@@ -38,49 +38,61 @@ export const changelogs: ChangelogVersion[] = [
 ];
 
 // Settings including default for initialization and labels
-export const defaultSettings: Settings = {
-    "bestbuy": {
-        "autoAddQueue": true,
-        "replaceQueue": false,
-        "requeueSuccess": true,
-    },
-    "bestbuy-notifications": {
-        "notificationSuccess": true,
-        "notificationFailure": true,
-        "notificationQueue": true,
-        "notificationRateLimit": true,
-    }
-};
 export const settingLabels: SettingLabels = {
+    "global": {
+        display: "Global Settings",
+        description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable notifications if you're playing games!",
+        settings: {
+            "autoOpenTab": {
+                display: "Automatically open tab when script not detected",
+                default: true,
+            },
+            "notificationError": {
+                display: "Show desktop notification on extension error",
+                default: true,
+            },
+        }
+    },
     "bestbuy": {
         display: "Best Buy General Settings",
         settings: {
             "autoAddQueue": {
                 display: "Automatically process queue add-to-cart when popped",
+                default: true,
+            },
+            "autoReload": {
+                display: "Automatically reload tab on possible rate-limiting",
+                default: true,
             },
             "replaceQueue": {
                 display: "Replace queues with shortest instead of appending",
+                default: true,
             },
             "requeueSuccess": {
-                display: "Re-queue with response headers on successful cart"
+                display: "Re-queue with response headers on successful cart",
+                default: true,
             },
         }
     },
     "bestbuy-notifications": {
         display: "Best Buy Notification Settings",
-        description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable if you're playing games!",
+        description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable notifications if you're playing games!",
         settings: {
             "notificationSuccess": {
-                display: "Show desktop notification on successful cart"
+                display: "Show desktop notification on successful cart",
+                default: true,
             },
             "notificationFailure": {
-                display: "Show desktop notification on failed cart"
+                display: "Show desktop notification on failed cart",
+                default: true,
             },
             "notificationQueue": {
-                display: "Show desktop notification on queue interception"
+                display: "Show desktop notification on queue interception",
+                default: true,
             },
             "notificationRateLimit": {
-                display: "Show desktop notification on potential rate-limiting"
+                display: "Show desktop notification on potential rate-limiting",
+                default: true,
             },
         }
     }
@@ -92,7 +104,7 @@ export const rawBestBuyItems: RawAccordionData = {
         display: "[Graphics] GeForce GTX 16-Series",
         items: [
             { display: "ASUS GeForce GTX 1660 SUPER TUF GAMING OC", "data": "6405063" },
-            { display: "EVGA GeForce GTX 1650 SUPER SUPER SC ULTRA GAMING", "data": "6412939" },
+            { display: "EVGA GeForce GTX 1650 SUPER SC ULTRA GAMING", "data": "6412939" },
             { display: "EVGA GeForce GTX 1660Ti SC ULTRA GAMING", "data": "6373500" },
             { display: "MSI GeForce GTX 1650 SUPER GAMING X", "data": "6397798" },
             { display: "MSI GeForce GTX 1660 SUPER GAMING X", "data": "6389333" },

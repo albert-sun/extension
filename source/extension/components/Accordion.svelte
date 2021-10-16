@@ -102,14 +102,14 @@
                     &:last-child { padding-bottom: 0.5em; }
 
                     td.cell-left {
-                        width: 70%;
+                        width: 73%;
                         white-space: nowrap;
                         overflow: hidden;
                         text-align: left; 
                     }
 
                     td.cell-right {
-                        width: 30%;
+                        width: 27%;
                         justify-content: center;
                         align-items: center;
                         white-space: nowrap; 

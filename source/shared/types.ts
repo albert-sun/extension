@@ -1,4 +1,5 @@
 import type { SvelteComponent } from "../../node_modules/svelte/types/runtime";
+import type { HandlerResponse } from "./types_new";
 
 // Setter and getter functions?
 export type Setter = (setKey: string, setValue: any) => void;
@@ -34,19 +35,9 @@ export interface AccordionItemData {
 export interface MessageHandlers { 
     [key: string]: (...args: any) => Promise<any>;
 }; // Content handlers for individual content scripts
-export interface MessageRequest {
-    sender:  string;
-    handler: string;
-    args:    any[];
-}; // Message request passed through Messages API
 export interface DomainMatches {
     [key: string]: string;
 }; // Domain key to glob URL match
-
-export interface MessageResponse {
-    status:  string; // success / not-found / error
-    payload: any;    // result / undefined / error message
-}; // Message response passed through Messages API
 
 // Changelog stuff
 export interface ChangelogVersion {
@@ -71,6 +62,7 @@ export interface SettingsCategoryLabel {
 };
 export interface SettingLabelValue {
     display: string;
+    default: string | boolean | number;
     args?:   { [index: string]: any };
 }
 
