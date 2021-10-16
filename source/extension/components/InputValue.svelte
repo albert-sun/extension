@@ -40,6 +40,10 @@
 </tr>
 
 <style lang="scss">
+    p {
+        line-height: 1em;
+    }
+
     /* Wrapper for input elements */
     tr.input-row {
         height: 2em;

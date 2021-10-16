@@ -21,7 +21,7 @@ export interface BroadcastedResponse {
 }; // Response payload from targeted tab, includes extra instructions
 export interface HandlerResponse {
     value: any;
-    execute?: string; // reload
+    execute?: string[]; // reload
 };
 
 // Ping request to check tab reactivity

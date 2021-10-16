@@ -40,16 +40,12 @@ async function processAddtoCart(
     });
 
     // Construct broadcasted payload depending on response
-    let execute: string | undefined;
+    let execute: string[] | undefined;
     if(addResponse.status !== 200 && addResponse.status !== 400) {
         // Not success or failure probably means error, notify reload
-        execute = "reload";
+        execute = ["reload", "retry"];
     }
     
-    console.log({
-        value: addResponse.status,
-        execute,
-    })
     return {
         value: addResponse.status,
         execute,

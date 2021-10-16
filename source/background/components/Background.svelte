@@ -144,12 +144,16 @@
 
                 // Check whether tab responded with request for execution
                 if(response.payload.execute !== undefined) {
-                    extensionLog(backgroundSelf, `Response received, performing execution handler ${response.payload.execute}`);
+                    extensionLog(backgroundSelf, `Response received, performing execution handlers ${response.payload.execute}`);
 
-                    if(response.payload.execute === "reload") {
+                    if(response.payload.execute.includes("reload")) {
                         // Reload current tab, idle until reloading complete (ping successful)
                         await browser.tabs.reload(tab.id as number);
                         await pingTabReady(tab.id as number);
+                    }
+                    if(response.payload.execute.includes("retry")) {
+                        // Push queued request to back for retry
+                        queuedRequests.push(queuedRequest);
                     }
                 } else {
                     extensionLog(backgroundSelf, `Response received, no execution handler necessary`);
@@ -304,7 +308,7 @@
                         }
                     }
 
-                    return true;
+                    return;
                 }
             }
             response = streamlinedResponse.payload as BroadcastedResponse;
@@ -357,9 +361,9 @@
                 // Broadcast notification, no onclick needed to re-queue?
                 title = `Best Buy - Error ${status}`;
                 if($settings["bestbuy"]["autoReload"] === true) {
-                    message = `Error carting ${productName} - possible rate limiting, auto-reloading tab`;
+                    message = `Error carting ${productName} - possible rate limiting, automatically reloading tab and retrying request`;
                 } else {
-                    message = `Error carting ${productName} - possible rate limiting, not auto-reloading tab`;
+                    message = `Error carting ${productName} - possible rate limiting, not automatically reloading tab`;
                 }
                 settingKeys = ["bestbuy", "notificationError"];
                 await soundNotification("error", title, message, settingKeys);
@@ -373,8 +377,6 @@
             settingKeys = ["global", "notificationError"];
             await soundNotification("error", title, message, settingKeys);
         }*/
-
-        return false;
     }
     
     // Does not include destructor, don't care
@@ -440,11 +442,11 @@
                             if($settings["bestbuy"]["autoAddQueue"] === true && blacklisted.has(queueData.a2cTransactionReferenceId) === false) {
                                 extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, broadcasting add-to-cart request`);
                             
+                                // Add blacklist so queue isn't re-executed, other handler deals with retrying
+                                blacklisted.add(queueData.a2cTransactionReferenceId);
+
                                 // Process add-to-cart sequentially with other requests
-                                const errored = await processAddToCart(sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode);
-                                if(errored === true) { // Errored, add to blacklist
-                                    blacklisted.add(queueData.a2cTransactionReferenceId);
-                                }
+                                await processAddToCart(sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode);
                             } else {
                                 extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, waiting for manual because of setting`);
                             }

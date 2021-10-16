@@ -4,7 +4,10 @@
 
     // Maintain URLs for currently opened tabs and update when needed
     let tabMappings: { [tabId: number]: string | undefined } = {};
-    $: $tabURLs = Object.values(tabMappings).filter(url => url !== undefined) as string[];
+    $: {
+        console.log(tabMappings);
+        $tabURLs = Object.values(tabMappings).filter(url => url !== undefined) as string[];
+    }
 
     // Retrieve tabs initially even without update
     onMount(async function() {
@@ -26,7 +29,7 @@
         });
         browser.tabs.onUpdated.addListener(function(tabId, changeInfo) {
             // Don't waste by processing useless updates
-            if(changeInfo.status === "loading") {
+            if(changeInfo.status === "loading" && changeInfo.url !== undefined) {
                 tabMappings[tabId] = changeInfo.url;
             }
         });
