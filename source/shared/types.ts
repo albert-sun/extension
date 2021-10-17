@@ -39,7 +39,7 @@ export interface DomainMatches {
     [key: string]: string;
 }; // Domain key to glob URL match
 
-// Changelog stuff
+// For displaying changelog stuff within extension
 export interface ChangelogVersion {
     display: string;
     bullets: string[];
@@ -82,10 +82,11 @@ export interface ProductQueueData {
 
 // Types for Best Buy content script
 // [startTime, a2cTransactionID, a2cTransactionCode, ???]
-export interface QueueData {
+export interface BestBuyClientQueueData {
     [sku: string]: [number, string, string, boolean];
 };
 
+/*
 // Stores session scraped info from EVGA products page
 export interface EVGAScrapedData {
     last: number; // Timestamp of last scraped
@@ -113,3 +114,4 @@ export interface EVGAGraphicsProduct {
     display: string;
     pn:      string;
 }; // Data for individual products within category
+*/

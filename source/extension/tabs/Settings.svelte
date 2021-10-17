@@ -4,7 +4,7 @@
     import InputValue from "../components/InputValue.svelte";
     import { extensionSelf, settingLabels } from "../../shared/constants";
     import type { Setter, Settings } from "../../shared/types";
-    import { initializeStore } from "../../shared/utilities";
+    import { extensionLog, initializeStore } from "../../shared/utilities";
 
     const self = extensionSelf;
 
@@ -16,6 +16,9 @@
     async function updateSettings(event: CustomEvent<any>, categoryKey: string, settingKey: string) {
         // Retrieve value from element, update and broadcast
         const newValue = event.detail; // Spoof for input value
+
+        extensionLog(self, `Updating setting [${categoryKey}][${settingKey}] to ${newValue}`);
+
         const categorySettings = $settings[categoryKey]; 
         categorySettings[settingKey] = newValue;
         setSettings(categoryKey, categorySettings);

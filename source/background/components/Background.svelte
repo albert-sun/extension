@@ -1,9 +1,9 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import type { Writable } from "svelte/store";
-    import { decodeQueue, minutesSeconds } from "../../extension/utilities";
+    import { decodeQueue, minutesSeconds } from "../../shared/utilities";
     import { bestBuyDisplays, settingLabels } from "../../shared/constants";
-    import type { BestBuyQueuesData, BestBuySKUQueuesData, MessageHandlers, ProductQueueData, QueueData, Setter, Settings } from "../../shared/types";
+    import type { BestBuyQueuesData, BestBuySKUQueuesData, MessageHandlers, ProductQueueData, BestBuyClientQueueData, Setter, Settings } from "../../shared/types";
     import { BroadcastedRequest, BroadcastedResponse, pingRequest, StreamlinedRequest, StreamlinedRequestRaw, StreamlinedResponse } from "../../shared/types_new";
     import { domainMatches, extensionLog, initializeStore, messageProcessHandlers } from "../../shared/utilities";
     import { sleep } from "../../shared/utilities";
@@ -21,7 +21,7 @@
     const backgroundSelf = "background"; // For logging
     const queuedRequests: StreamlinedRequest[] = [];
     let executing: boolean = false; // Whether execution is currently happening
-    let notifications: { [key: string]: HTMLAudioElement };
+    let notifications: { [key: string]: string };
     // Best Buy variables
     const bestBuySelf = "background-bestbuy"; // For logging
     const bestBuyCartURL = "https://www.bestbuy.com/cart";
@@ -47,10 +47,19 @@
                     resolve(id);
                 });
             });
+
+            // Automatically clear after settings duration
+            setTimeout(() => { 
+                chrome.notifications.clear(notificationId as string); 
+            }, $settings["global"]["durationNotification"] as number);
         }
 
-        // Always play notification sound with given key 
-        notifications[soundKey].play();
+        // Always play notification sound with given key if desired
+        // Re-initialize from file vs. using existing Audio for simultaneous playing
+        if($settings["global"]["playNotifications"] === true) {
+            const notificationSound = new Audio(notifications[soundKey]);
+            notificationSound.play();
+        }
 
         return notificationId;
     }
@@ -73,7 +82,7 @@
         // Keep pinging until tab responds
         while(ready === true) {
             const pingResponse = await sendMessageTab(tabId, pingRequest);
-            if(typeof pingResponse !== "string") { // Successfully communicated with tab
+            if(pingResponse !== undefined && typeof pingResponse !== "string") { // Successfully communicated with tab
                 break;
             }
             await sleep($settings["global"]["pollingInterval"] as number);
@@ -116,12 +125,13 @@
             }
 
             // Iterate over tabs and attempt communication
+            let retryRequest = false;
             for(const tab of matchingTabs) {
                 extensionLog(backgroundSelf, `Attempting to ping tab with ID ${tab.id} and URL ${tab.url}`);
 
                 // Perform ping and check whether tab responds
                 const pingResponse = await sendMessageTab(tab.id as number, pingRequest);
-                if(typeof pingResponse === "string") { // Failed to communicate with tab
+                if(pingResponse === undefined || typeof pingResponse === "string") { // Failed to communicate with tab
                     extensionLog(backgroundSelf, `Error pinging content script: ${pingResponse}`);
 
                     continue;
@@ -135,7 +145,7 @@
                     args: queuedRequest.args,
                 }; // Mirror request from queued parameters
                 const response = await sendMessageTab(tab.id as number, request);
-                if(typeof response === "string") { // Failed to communicate with tab
+                if(response === undefined || typeof response === "string") { // Failed to communicate with tab
                     // Should never happen since ping was successful
                     throw new Error(`error communicating after ping: ${response}`)
                 }
@@ -147,19 +157,31 @@
                     extensionLog(backgroundSelf, `Response received, performing execution handlers ${response.payload.execute}`);
 
                     if(response.payload.execute.includes("reload")) {
+                        extensionLog(backgroundSelf, `Executing reload for tab with ID ${tab.id}`);
+
                         // Reload current tab, idle until reloading complete (ping successful)
                         await browser.tabs.reload(tab.id as number);
+                        await sleep(1000); // Give a second for the reload to initialize
                         await pingTabReady(tab.id as number);
                     }
                     if(response.payload.execute.includes("retry")) {
+                        extensionLog(backgroundSelf, `Executing retry, re-pushing request to back of queue`);
+
                         // Push queued request to back for retry
                         queuedRequests.push(queuedRequest);
+
+                        retryRequest = true;
                     }
                 } else {
                     extensionLog(backgroundSelf, `Response received, no execution handler necessary`);
                 }
 
-                break; // Only send request a single time
+                break; // Stop sending requests after successful
+            }
+
+            // Moved retry handler down since JS/TS doesn't have goto
+            if(retryRequest === true) {
+                continue;
             }
 
             const serializedResponse = JSON.stringify(queuedResponse);
@@ -203,7 +225,7 @@
     }
 
     // background-bestbuy: Merge product queues from page with currently tracked queues
-    async function mergeProductQueues(mergeQueueData: QueueData) {
+    async function mergeProductQueues(mergeQueueData: BestBuyClientQueueData) {
         // Iterate over browser queue for each SKU, merging unseen with currently tracked
         const currentTime = new Date().getTime(); // In milliseconds from epoch
         for(const [sku, skuQueueData] of Object.entries(mergeQueueData)) {
@@ -214,13 +236,36 @@
                 const [startTime, a2cTransactionReferenceId, a2cTransactionCode] = skuQueueData;
                 const queueTime = decodeQueue(skuQueueData[1]); 
                 const remainingTime = startTime + queueTime - currentTime;
+                const [remainingMinutes, remainingSeconds, negative] = minutesSeconds(remainingTime);
                 
                 // Don't bother adding if queue already expired
                 if(remainingTime > -5 * 60 * 1000) {
-                    // Construct and store queue data for given SKU
+                    // Construct and store queue data for given SKU, then append or replace existing
+                    // existingQueues updated within updateReplaceQueues when ran
                     const queueData = { startTime, a2cTransactionReferenceId, a2cTransactionCode, queueTime };
                     const existingQueues = $queues[sku] || {};
-                    existingQueues[a2cTransactionReferenceId] = queueData;
+                    
+                    // Check Best Buy setting to see whether replacement needed
+                    if($settings["bestbuy"]["replaceQueue"] === true && Object.keys(existingQueues).length > 0) {
+                        // Perform update and replacement with import queue
+                        const [shorter, diffMinutes, diffSeconds] = updateReplaceQueues(existingQueues, queueData, currentTime);
+                        if(shorter === true) {
+                            // Imported queue improvement
+                            extensionLog(backgroundSelf, `Importing queue for SKU ${sku} has ${diffMinutes}m ${diffSeconds}s improvement, replacing`);
+                        } else {
+                            // Worse imported queue, don't replace and ignore
+                            extensionLog(backgroundSelf, `Importing queue for SKU ${sku} worse by ${diffMinutes}m ${diffSeconds}s improvement, not replacing`);
+                        }
+                    } else {
+                        // Perform regular appending to existing list
+                        if(negative === false) {
+                            // Queue hasn't popped yet
+                            extensionLog(backgroundSelf, `Importing queue for SKU ${sku} with ${remainingMinutes}m ${remainingSeconds}s remaining`);
+                        } else {
+                            // Queue already popped but hasn't expired yet
+                            extensionLog(backgroundSelf, `Importing queue for SKU ${sku} already popped for ${remainingMinutes}m ${remainingSeconds}s`);
+                        }
+                    }
                     setQueues(sku, existingQueues);
                 }
             }
@@ -229,12 +274,12 @@
 
     // background-bestbuy: Update and replace queues for given existing queues, keeping the shortest
     function updateReplaceQueues(
-        existingQueues: BestBuySKUQueuesData, newQueueData: ProductQueueData, startTime: number
+        existingQueues: BestBuySKUQueuesData, newQueueData: ProductQueueData, currentTime: number
     ): [boolean, number, number] {
         // Deconstruct current queues into remaining time
         const existingQueuesMapped = Object.entries(existingQueues)
             .map(([queueKey, queueData]) => {
-                const remainingTime = queueData.startTime + queueData.queueTime - startTime;
+                const remainingTime = queueData.startTime + queueData.queueTime - currentTime;
                 return [remainingTime, queueKey, queueData] as [number, string, ProductQueueData];
             }); // [remaining, queueKey, queueData]
 
@@ -244,7 +289,7 @@
 
         // Check whether previous queue time(s) are shorter 
         const newQueueKey = newQueueData.a2cTransactionReferenceId;
-        const newRemaining = newQueueData.startTime + newQueueData.queueTime - startTime;
+        const newRemaining = newQueueData.startTime + newQueueData.queueTime - currentTime;
         existingQueuesMapped.push([newRemaining, newQueueKey, newQueueData]);
 
         // Sort and check whether ID of first index switches to new
@@ -294,18 +339,16 @@
                     const title = "Best Buy - Tab Not Found";
                     const message = "Matching tab not found or content script not responding. Open a matching tab or try reloading the page.";
                     const notificationId = await soundNotification("error", title, message, ["global", "notificationNotFound"]);
-                    if(notificationId !== undefined) {
-                        // Attach onclick for opening new tab manually
-                        if(notificationId !== undefined) { // Means notification displayed
-                            // Are there issues with memory leaks when listeners are added?
-                            browser.notifications.onButtonClicked.addListener(async function(_, buttonIndex) {
-                                // 0 index means open cart page
-                                if(buttonIndex === 0) {
-                                    // Create tab but don't waste resources pinging loading
-                                    await createTabReady(bestBuyTabURL, false);
-                                }
-                            });
-                        }
+                    // Attach onclick for opening new tab manually
+                    if(notificationId !== undefined) { // Means notification displayed
+                        // Are there issues with memory leaks when listeners are added?
+                        browser.notifications.onButtonClicked.addListener(async function(_, buttonIndex) {
+                            // 0 index means open cart page
+                            if(buttonIndex === 0) {
+                                // Create tab but don't waste resources pinging loading
+                                await createTabReady(bestBuyTabURL, false);
+                            }
+                        });
                     }
 
                     return;
@@ -383,10 +426,10 @@
     onMount(async function() {
         // background: Load notification sounds from resource file for playing
         notifications = {
-            "success": new Audio("../resources/notification_success.mp3"),
-            "failure": new Audio("../resources/notification_queue.mp3"),
-            "queue": new Audio("../resources/notification_queue.mp3"),
-            "error": new Audio("../resources/notification_ratelimit.mp3"),
+            "success": "../resources/notification_success.mp3",
+            "failure": "../resources/notification_queue.mp3",
+            "queue": "../resources/notification_queue.mp3",
+            "error": "../resources/notification_ratelimit.mp3",
         };
 
         // background: Initialize settings store from storage and merge with version updates

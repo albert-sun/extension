@@ -1,6 +1,22 @@
 import { writable } from "../../node_modules/svelte/store";
 import type { ChangelogVersion, RawAccordionData, SettingLabels, Settings } from "./types";
 
+// Reduces raw accordion data to their respective displays
+function reduceDisplays(input: RawAccordionData): { [sku: string]: string } {
+    return Object.entries(input).reduce((obj, [_, rawCategoryData]) => {
+        obj = {
+            ...obj, 
+            ...Object.entries(rawCategoryData.items).reduce((subObj, [_, rawItemData]) => {
+                subObj[rawItemData.data] = rawItemData.display;
+        
+                return subObj;
+            }, {} as { [sku: string]: string }),
+        };
+        
+        return obj;
+    }, {} as { [sku: string]: string });
+}
+
 // Declare shared stores, NOTE that they can only be shared within the same context!
 export const tabURLs = writable([] as string[]); // tab URLs shared between components
 
@@ -11,6 +27,27 @@ export const extensionSelf = "extension";
 
 // Changelog for display purposes, most recent to oldest
 export const changelogs: ChangelogVersion[] = [
+    {
+        display: "Version 1.2.0",
+        bullets: [
+            "Re-factor of background script, content scripts, and extension front-end to "
+                + "implement sequential handler execution and other features",
+            "Implemented auto-reload with setting whenever 403/500 response received",
+            "Implemented iterating over multiple tabs for sending requests - "
+                + "while executed once, each tab is pinged beforehand to ensure execution",
+            "Added new notification sounds and expanded notifications for different events",
+            "Added automatically opening tab with setting on execution when script not detected",
+            "Added option to disable notification sounds for all events (separate from popups)",
+            "Changed the way notification sounds are played so that they can overlap ",
+            "Fixed settings tab either not working or behaving strangely (buttons not working, "
+                + "certain settings not saving, etc.)",
+            "Aggregated background scripts into a single script because I thought they "
+                + "couldn't communicate to each other through the runtime.sendMessage API, "
+                + "but apparently the issue was something else. Doing some testing to check "
+                + "whether I'm good to separate them again in future versions for code clarity",
+            "Somewhat cleaned up code and aggregated utilities because of tree shaking",
+        ]
+    },
     {
         display: "Version 1.1.1",
         bullets: [
@@ -47,9 +84,20 @@ export const settingLabels: SettingLabels = {
                 display: "Automatically open tab when script not detected",
                 default: true,
             },
+            "playNotifications": {
+                display: "Play notification sounds on events",
+                default: true,
+            },
             "notificationError": {
                 display: "Show desktop notification on extension error",
                 default: true,
+            },
+            "durationNotification": {
+                display: "Notification popup duration before clearing",
+                default: 5000,
+                args: {
+                    "suffix": "ms"
+                },
             },
         }
     },
@@ -58,35 +106,35 @@ export const settingLabels: SettingLabels = {
         description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable notifications if you're playing games!",
         settings: {
             "autoAddQueue": {
-                display: "Automatically process queue add-to-cart when popped",
+                display: "Automatically execute queue add-to-cart when finished",
                 default: true,
             },
             "autoReload": {
-                display: "Automatically reload tab on possible rate-limiting",
+                display: "Automatically reload tab on potential rate-limit (403/500)",
                 default: true,
             },
             "replaceQueue": {
-                display: "Replace queues with shortest instead of appending",
+                display: "Maintain shortest instead of multiple queues per SKU",
                 default: true,
             },
             "requeueSuccess": {
-                display: "Re-queue with response headers on successful cart",
+                display: "Re-queue with response queue on successful add-to-cart",
                 default: true,
             },
             "notificationSuccess": {
-                display: "Show desktop notification on successful cart",
+                display: "Show desktop notification on successful add-to-cart",
                 default: true,
             },
             "notificationFailure": {
-                display: "Show desktop notification on failed cart",
+                display: "Show desktop notification on failed add-to-cart",
                 default: true,
             },
             "notificationQueue": {
-                display: "Show desktop notification on queue interception",
+                display: "Show desktop notification on new queue interception",
                 default: true,
             },
             "notificationRateLimit": {
-                display: "Show desktop notification on potential rate-limiting",
+                display: "Show desktop notification on potential rate-limit (403/500)",
                 default: true,
             },
         }
@@ -244,15 +292,6 @@ export const rawBestBuyItems: RawAccordionData = {
         ],
     },
 };
-export const bestBuyDisplays: { [sku: string]: string } = Object.entries(rawBestBuyItems).reduce((obj, [_, rawCategoryData]) => {
-    obj = {
-        ...obj, 
-        ...Object.entries(rawCategoryData.items).reduce((subObj, [_, rawItemData]) => {
-            subObj[rawItemData.data] = rawItemData.display;
-    
-            return subObj;
-        }, {} as { [sku: string]: string }),
-    };
-    
-    return obj;
-}, {} as { [sku: string]: string });
+export const bestBuyDisplays: { [sku: string]: string } = reduceDisplays(rawBestBuyItems);
+
+// EVGA data for manual add-to-cart and display

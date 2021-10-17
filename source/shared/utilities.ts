@@ -2,6 +2,10 @@ import { Writable, get, writable } from "../../node_modules/svelte/store";
 import type { DomainMatches, MessageHandlers } from "./types";
 import type { BroadcastedRequest, BroadcastedResponse } from "./types_new";
 
+export const domainMatches: DomainMatches = {
+    "bestbuy": "https://*.bestbuy.com/*",
+}; // Domain matches for sending messages from background or extension
+
 // Somewhat fancy logging from extension background
 export function extensionLog(sender: string, message: string, level: string = "info") {
     // Generate timestmap for logging in 24-hour HH:MM:SS format
@@ -92,39 +96,6 @@ export async function sendRequestBackground(handler: string, args: any[] = []): 
     return response;
 };
 
-// Initializes wrapper for sending messages from background or extension with key and params
-// Must target individual tabs by glob, thus only sends to the first tab matched
-export const domainMatches: DomainMatches = {
-    "bestbuy": "https://*.bestbuy.com/*",
-}; // Domain matches for sending messages from background or extension
-
-/*
-export async function sendMessageToContent(self: string, target: string, handler: string, args: any[] = []): Promise<MessageResponse> {
-    // Construct request from parameters
-    const request: MessageRequest = {
-        sender: self,
-        handler, args,
-    }; 
-
-    // Assume that tab always found, have failsafe?
-    let response: MessageResponse = {
-        status: "error",
-        payload: "tab not found (shouldn't happen)",
-    }; // Default response, overwritten if tab found
-    const tabs = await browser.tabs.query({ 
-        url: domainMatches[target] as string,
-        discarded: false,
-        status: "complete",
-    }); // Might cause issues with discarded tabs?
-    if(tabs.length > 0) { 
-        // Only process on first content script, assume tab ID defined
-        response = await browser.tabs.sendMessage(tabs[0].id as number, request);
-    }
-    
-    return response;
-};
-*/
-
 // Initializes message receiving for given content script with key and handlers
 export function messageProcessHandlers(contentKey: string, handlers: MessageHandlers, validSenders: string[]) {
     // Setup listener for snooping messages and executing matching handlers
@@ -188,4 +159,42 @@ export function openPage(url: string, active = false) {
 // https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
 export function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// https://stackoverflow.com/questions/24558442/is-there-something-like-glob-but-for-urls-in-javascript
+export function urlGlob(pattern: string, input: string) {
+    var re = new RegExp(pattern.replace(/([.?+^$[\]\\(){}|\/-])/g, "\\$1").replace(/\*/g, '.*'));
+    return re.test(input);
+}
+
+// Decodes the queue code to the number of milliseconds
+export function decodeQueue(queueCode: string) {
+    const splitCode = queueCode.split("-");
+    const parsedCode = splitCode.map(chunk => parseInt(chunk, 16));
+    // if(parsedCode[1] * parsedCode[2] * parsedCode[3] === parsedCode[4])
+    const waitDuration = 100 * 10 * parseInt(splitCode[2] + splitCode[3], 16) / parsedCode[1];
+    
+    return waitDuration;
+}
+
+// Calculates the number of minutes and seconds for queue
+export function minutesSeconds(totalMilliSeconds: number, truncate = false): [number, number, boolean] {
+    // Bypass functionality for negative times
+    let negative = false;
+    if(totalMilliSeconds < 0) {
+        totalMilliSeconds = totalMilliSeconds * -1;
+        negative = true;
+    }
+
+    const totalSeconds = totalMilliSeconds / 1000;
+    let minutes = Math.floor(totalSeconds / 60);
+    let seconds = totalSeconds % 60;
+
+    // Truncate numbers if desired
+    if(truncate === true) {
+        minutes = Math.floor(minutes);
+        seconds = Math.floor(seconds);
+    }
+
+    return [minutes, seconds, negative]
 }

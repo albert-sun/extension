@@ -3,7 +3,7 @@
     import { bestBuyDisplays } from "../../shared/constants";
     import type { ProductQueueData } from "../../shared/types";
     import { extensionLog, openPage, sendRequestBackground } from "../../shared/utilities";
-    import { minutesSeconds } from "../utilities";
+    import { minutesSeconds } from "../../shared/utilities";
 
     export let remainingTime: number;        // [INPUT] Remaining time before queue pop, in milliseconds
     export let sku: string;                  // [INPUT] Product SKU for manual add-to-cart or page button

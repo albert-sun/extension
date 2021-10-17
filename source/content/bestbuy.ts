@@ -1,6 +1,6 @@
 import { contentSelf } from "../shared/constants";
-import type { MessageHandlers, QueueData } from "../shared/types";
-import { BroadcastedResponse, contentPing, HandlerResponse } from "../shared/types_new";
+import type { BestBuyClientQueueData, MessageHandlers } from "../shared/types";
+import { contentPing, HandlerResponse } from "../shared/types_new";
 import { extensionLog, messageProcessHandlers, sendRequestBackground } from "../shared/utilities";
 
 const self = contentSelf; // Content script identifier
@@ -65,7 +65,7 @@ async function runtime() {
     // Send updated raw queue info to background
     // Can't intercept requests, instead intercept data manually?
     const serializedQueueData = atob(localStorage.getItem("purchaseTracker") || "e30=");
-    const queueData = JSON.parse(serializedQueueData) as QueueData;
+    const queueData = JSON.parse(serializedQueueData) as BestBuyClientQueueData;
     sendRequestBackground("merge-bestbuy-product_queues", [queueData]); // Throw and forget
 }
 

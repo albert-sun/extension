@@ -36,34 +36,20 @@
     <!-- Notes and current bugs -->
     <div class="flex-column column-spacing-tiny about-list">
         <p style="text-decoration: underline">
-            Notes and current bugs / missing features:
+            <b>Notes and current bugs / missing features:</b>
         </p>
         <p>
-            • Sometimes the content script isn't loaded correctly even though the 
-            tab is open... As per below, I'm working on adding notifications for all
-            carting requests, but if something isn't working try reloading the 
-            respective Best Buy tab. Sorry about that!
+            • The current notification sounds for failure and rate-limiting are
+            pretty awful, feel free to send me notification sound recommendations,
+            thank you!
         </p>
         <p>
-            • When automatically or manually adding products for Best Buy,
-            sometimes you'll get rate-limited which can be solved with a simple
-            refresh of the offending page. I'm currently working on automatic
-            tab reloading but didn't want to push anything untested which could
-            potentially break extension functionality.
-        </p>
-        <p>
-            • There's also currently no notification with sound when rate-limiting 
-            has been detected, mainly because I couldn't find any nice-sounding
-            notification sounds online. Feel free to send me recommendations, thanks!
-        </p>
-        <p>
-            The setting regarding 're-queueing with response headers on successful
-            cart' for Best Buy has worked properly but hasn't been tested (mainly
-            since there's nothing in-stock to test with). If you encounter any issues,
-            please toggle the setting back on as a temporary solution.
+            • The setting for 're-queueing with response headers on successful
+            cart' for Best Buy has been implemented but not tested (since there's
+            nothing currently in-stock and queueable to test with). If you encounter
+            any major issues, please notify me ASAP through Discord.
         </p>
     </div>
-    
 </div>
 
 <style lang="scss">
