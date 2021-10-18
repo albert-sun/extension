@@ -1,10 +1,11 @@
 <script lang="ts">
     import { createEventDispatcher } from "svelte";
 
-    export let display: string;                     // [INPUT] Left-aligned display input
-    export let args: { [index: string]: any } = {}; // [INPUT] Optional arguments
-    export let value: number | string | boolean; // [OUTPUT] Input value
-
+    export let display: string;                         // [INPUT] Left-aligned display input
+    export let args: { [index: string]: any } = {};     // [INPUT] Optional arguments
+    export let initialValue: number | string | boolean; // [OUTPUT] Input value
+    let value = initialValue; // Mirrored but independent from settings
+    
     // Dispatch change event whenever modified
     const dispatch = createEventDispatcher();
     $: dispatch("update", value);
@@ -39,6 +40,10 @@
 </tr>
 
 <style lang="scss">
+    p {
+        line-height: 1em;
+    }
+
     /* Wrapper for input elements */
     tr.input-row {
         height: 2em;
@@ -47,14 +52,14 @@
         align-items: center;
 
         td.cell-left { 
-            width: 70%;
+            width: 73%;
             white-space: nowrap;
             overflow: hidden;
             text-align: left; 
         }
 
         td.cell-right {
-            width: 30%;
+            width: 27%;
             justify-content: center;
             align-items: center;
             white-space: nowrap; 

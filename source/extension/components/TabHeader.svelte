@@ -1,11 +1,14 @@
 <script lang="ts">
     import { tabURLs } from "../../shared/constants";
-    import { urlGlob } from "../utilities";
+    import { urlGlob } from "../../shared/utilities";
 
     export let urlMatch: string;  // [INPUT] URL match to check open tabs for
     export let openURL: string;   // [INPUT] URL to open when button clicked
+    export let autoOpen: boolean; // [INPUT] Boolean, whether to automatically open tabs 
     export let matches: boolean;  // [OUTPUT] Whether the content script is loaded
-    tabURLs.subscribe(value => { matches = (value).filter(url => urlGlob(urlMatch, url)).length > 0 });
+    tabURLs.subscribe(value => { 
+        matches = (value).filter(url => urlGlob(urlMatch, url)).length > 0;
+    });
 
     // Opens new tab instead of using link for focus purposes
     function openTab() {
@@ -16,7 +19,7 @@
     }
 </script>
 
-{#if matches === false}
+{#if matches === false && autoOpen === false}
     <div class="flex-row status-row">
         <!-- <p>Successfully detected running content script, no action needed</p> -->
         <!-- Display link to open URL -->

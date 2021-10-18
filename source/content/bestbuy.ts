@@ -1,15 +1,19 @@
-import { bestBuyDisplays, contentSelf } from "../shared/constants";
-import type { MessageHandlers, QueueData } from "../shared/types";
-import { extensionLog, messageProcessHandlers, sendMessageToBackground } from "../shared/utilities";
+import { contentSelf } from "../shared/constants";
+import type { BestBuyClientQueueData, MessageHandlers } from "../shared/types";
+import { contentPing, HandlerResponse } from "../shared/types_new";
+import { extensionLog, messageProcessHandlers, sendRequestBackground } from "../shared/utilities";
 
 const self = contentSelf; // Content script identifier
 const messageHandlers: MessageHandlers = {
-    "process-atc": processAddtoCart,
+    "ping": contentPing,
+    "process-add_to_cart": processAddtoCart,
 }; // Message handlers for processing from Messages API
 
 // Send add-to-cart request, optionally with (assuming popped) queue data
 // Only return success / failure / error results, ignore new queue and response content
-async function processAddtoCart(sku: string, a2cTransactionReferenceId?: string, a2cTransactionCode?: string): Promise<any> {
+async function processAddtoCart(
+    sku: string, a2cTransactionReferenceId?: string, a2cTransactionCode?: string
+): Promise<HandlerResponse> {
     // Initialize headers and additionally add queue data if defined
     const headers: { [name: string]: string } = {
         "accept": "application/json",
@@ -25,7 +29,7 @@ async function processAddtoCart(sku: string, a2cTransactionReferenceId?: string,
     if(a2cTransactionCode !== undefined) { headers["a2ctransactioncode"] = a2cTransactionCode; }
     
     // Process add-to-cart request and check response status for result
-    const response = await fetch("https://www.bestbuy.com/cart/api/v1/addToCart", {
+    const addResponse = await fetch("https://www.bestbuy.com/cart/api/v1/addToCart", {
         "headers": headers,
         "referrer": "https://www.bestbuy.com/cart",
         "referrerPolicy": "strict-origin-when-cross-origin",
@@ -35,19 +39,17 @@ async function processAddtoCart(sku: string, a2cTransactionReferenceId?: string,
         "credentials": "include",
     });
 
-    // Show notification notifying of potential rate-limit?
-    if(response.status !== 200 && response.status !== 400) {
-        // Construct for sending notification with sound
-        const productName = bestBuyDisplays[sku];
-        const title = "Best Buy - Potential Rate-Limiting";
-        const message = `[${productName}] Potential rate-limiting on add-to-cart request with status ${response.status}, try reloading the tab!`;
-        sendMessageToBackground(self, "sound-notification", [
-            "success", title, message, 
-            ["bestbuy-notifications", "notificationRateLimit"],
-        ]); // Send category and settings key instead of setting
+    // Construct broadcasted payload depending on response
+    let execute: string[] | undefined;
+    if(addResponse.status !== 200 && addResponse.status !== 400) {
+        // Not success or failure probably means error, notify reload
+        execute = ["reload", "retry"];
     }
-
-    return response.status;
+    
+    return {
+        value: addResponse.status,
+        execute,
+    };
 }
 
 // General startup routine for content script
@@ -63,8 +65,8 @@ async function runtime() {
     // Send updated raw queue info to background
     // Can't intercept requests, instead intercept data manually?
     const serializedQueueData = atob(localStorage.getItem("purchaseTracker") || "e30=");
-    const queueData = JSON.parse(serializedQueueData) as QueueData;
-    sendMessageToBackground("content_best-buy", "merge-bestbuy-product_queues", [queueData]); // Throw and forget
+    const queueData = JSON.parse(serializedQueueData) as BestBuyClientQueueData;
+    sendRequestBackground("merge-bestbuy-product_queues", [queueData]); // Throw and forget
 }
 
 await startup();

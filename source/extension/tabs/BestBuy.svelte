@@ -5,17 +5,17 @@
     import Button from "../components/Button.svelte";
     import QueueInfo from "../components/QueueInfo.svelte";
     import TabHeader from "../components/TabHeader.svelte";
-    import { bestBuyDisplays, defaultSettings, extensionSelf, rawBestBuyItems } from "../../shared/constants";
+    import { bestBuyDisplays, rawBestBuyItems } from "../../shared/constants";
     import type { AccordionData, AccordionItemData, BestBuyQueuesData, Setter, Settings } from "../../shared/types";
-    import { extensionLog, initializeStore, sendMessageToBackground, sendMessageToContent } from "../../shared/utilities";
+    import { extensionLog, initializeStore, sendRequestBackground } from "../../shared/utilities";
     
-    const self = extensionSelf;
     const urlMatch = "https://*.bestbuy.com/*";
     const openURL = "https://www.bestbuy.com/";
     let matches = false; // Whether content script found
     let queues: Writable<BestBuyQueuesData>;
     let setQueues: Setter;
-    let settings: Writable<Settings>; // Read-only
+    let settings: Writable<Settings>;
+    let autoOpenTab: boolean; // Derived from settings
 
     // When button clicked, add item to cart (without queue d ata)
     async function addToCart(sku: string) {
@@ -23,12 +23,11 @@
 
         extensionLog("extension", `Attempting to add ${productName} to cart from extension`);
 
-        // Throw and forget message, background automatically intercepts queue
-        const response = await sendMessageToContent("extension", "bestbuy", "process-atc", [sku]);
-        if(response.payload === 200) { 
-            // Play notification sound from background page on success
-            sendMessageToBackground(self, "successful-cart", [sku]);
-        }
+        // Queue add-to-cart request sequentially
+        await sendRequestBackground(
+            "process-add_to_cart",
+            [sku],
+        );
     }
 
     // Delete given queue and broadcast update
@@ -77,7 +76,7 @@
     // Default props sent to component for queue
     let defaultQueueProps: { [key: string]: any };
     $: defaultQueueProps = {
-        "disabled": !matches,
+        "disabled": matches === false && autoOpenTab === false,
         "deleteQueue": deleteQueue,
     };
 
@@ -100,16 +99,19 @@
     let defaultAddProps: { [key: string]: any };
     $: defaultAddProps = {
         "display": "Add to Cart",
-        "disabled": !matches,
+        "disabled": matches === false && autoOpenTab === false,
         "onclick": addToCart,
     };
 
     // Does not include destructor, don't care
     onMount(async function() {
         // Initialize various stores (ignore setter and deleter because read-only)
-        ({ store: queues, set: setQueues } = await initializeStore<BestBuyQueuesData>(self, "queues", {}));
-        ({ store: settings } = await initializeStore<Settings>(self, "settings", defaultSettings));
-        
+        ({ store: queues, set: setQueues } = await initializeStore<BestBuyQueuesData>( "queues", {}));
+        ({ store: settings } = await initializeStore<Settings>( "settings", {}));
+        settings.subscribe(value => { 
+            autoOpenTab = (value["global"] || {})["autoOpenTab"] as boolean;
+        }); // Derive individual setting from global setting
+
         // Run re-render on interval and on queue update
         setInterval(() => { updateQueueData() }, 250);
         queues.subscribe(_ => { updateQueueData() });
@@ -118,6 +120,7 @@
 
 <TabHeader urlMatch={urlMatch}
     openURL={openURL}
+    autoOpen={autoOpenTab}
     bind:matches={matches}/>
 <div class="flex-column column-spacing-small content">
     <!-- Queue tracking section with collapsible accordion -->
@@ -133,7 +136,6 @@
     <Accordion accordionData={accordionQueues}
         defaultProps={defaultQueueProps}
         deselectable={true}/>
-
     <br>
 
     <!-- Manual add-to-cart section with collapsible accordion -->

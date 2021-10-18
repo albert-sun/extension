@@ -2,9 +2,9 @@
     import { onMount } from "svelte";
     import type { Writable } from "svelte/store";
     import InputValue from "../components/InputValue.svelte";
-    import { defaultSettings, extensionSelf, settingLabels } from "../../shared/constants";
+    import { extensionSelf, settingLabels } from "../../shared/constants";
     import type { Setter, Settings } from "../../shared/types";
-    import { initializeStore } from "../../shared/utilities";
+    import { extensionLog, initializeStore } from "../../shared/utilities";
 
     const self = extensionSelf;
 
@@ -16,6 +16,9 @@
     async function updateSettings(event: CustomEvent<any>, categoryKey: string, settingKey: string) {
         // Retrieve value from element, update and broadcast
         const newValue = event.detail; // Spoof for input value
+
+        extensionLog(self, `Updating setting [${categoryKey}][${settingKey}] to ${newValue}`);
+
         const categorySettings = $settings[categoryKey]; 
         categorySettings[settingKey] = newValue;
         setSettings(categoryKey, categorySettings);
@@ -24,32 +27,35 @@
     // Does not include destructor, don't care
     onMount(async function() {
         // Initialize settings store and custom logic for broadcasting updates
-        ({store: settings, set: setSettings } = await initializeStore<Settings>(self, "settings", defaultSettings));
+        ({ store: settings, set: setSettings } = await initializeStore<Settings>( "settings", {}));
     });
 </script>
 
 <div class="flex-column column-spacing-small content">
-    <!-- Iterate over labels instead of settings to preserve order -->
-    {#each Object.entries(settingLabels) as [labelCategoryKey, labelCategoryData]}
-        <p class="header">{labelCategoryData.display}</p>
-        {#if labelCategoryData.description !== undefined}
-            <p>{labelCategoryData.description}</p>
-        {/if}
-        <table class="settings-wrapper">
-            {#each Object.entries(labelCategoryData.settings) as [labelSettingKey, labelSettingData]}
-                <!-- Don't bind, only care about initial setting value
-                Convoluted mess of || because of {} initial render -->
-                <InputValue display={labelSettingData.display}
-                    value={
-                        (($settings || {})[labelCategoryKey] || defaultSettings[labelCategoryKey])[labelSettingKey]
-                        || defaultSettings[labelCategoryKey][labelSettingKey]
-                    }
-                    args={labelSettingData.args || {}}
-                    on:update={event => { updateSettings(event, labelCategoryKey, labelSettingKey) }}/>
-            {/each}
-        </table>
-        <br>
-    {/each}
+    <!-- Only render when initialized for initial value -->
+    {#if $settings !== undefined}
+        <!-- Iterate over labels instead of settings to preserve order -->
+        {#each Object.entries(settingLabels) as [labelCategoryKey, labelCategoryData]}
+            <p class="header">{labelCategoryData.display}</p>
+            {#if labelCategoryData.description !== undefined}
+                <p>{labelCategoryData.description}</p>
+            {/if}
+            <table class="settings-wrapper">
+                {#each Object.entries(labelCategoryData.settings) as [labelSettingKey, labelSettingData]}
+                    <!-- Don't bind, only care about initial setting value
+                    Convoluted mess of || because of {} initial render -->
+                    <InputValue display={labelSettingData.display}
+                        initialValue={
+                            $settings[labelCategoryKey] && $settings[labelCategoryKey][labelSettingKey] !== undefined
+                            ? $settings[labelCategoryKey][labelSettingKey] : labelSettingData.default
+                        }
+                        args={labelSettingData.args || {}}
+                        on:update={event => { updateSettings(event, labelCategoryKey, labelSettingKey) }}/>
+                {/each}
+            </table>
+            <br>
+        {/each}
+    {/if}
 </div>
 
 <style lang="scss">
