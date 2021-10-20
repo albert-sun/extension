@@ -75,7 +75,7 @@ export const changelogs: ChangelogVersion[] = [
 ];
 
 // Settings including default for initialization and labels
-export const settingLabels: SettingLabels = {
+export const settingsDisplays: SettingLabels = {
     "global": {
         display: "Global Settings",
         description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable notifications if you're playing games!",
@@ -114,7 +114,7 @@ export const settingLabels: SettingLabels = {
                 default: true,
             },
             "replaceQueue": {
-                display: "Maintain shortest instead of multiple queues per SKU",
+                display: "Maintain shortest queue per SKU instead of multiple",
                 default: true,
             },
             "requeueSuccess": {
@@ -293,5 +293,3 @@ export const rawBestBuyItems: RawAccordionData = {
     },
 };
 export const bestBuyDisplays: { [sku: string]: string } = reduceDisplays(rawBestBuyItems);
-
-// EVGA data for manual add-to-cart and display

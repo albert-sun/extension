@@ -1,38 +1,54 @@
-// Interfaces for streamlining queued requests streamlinely
-export interface StreamlinedRequestRaw {
-    urlMatch: string;   // URL to query tabs for
-    handler:  string;   // Name of handler
-    args:     any[];
-}; // Currently queued request within streamline background script
-export interface StreamlinedRequest extends StreamlinedRequestRaw {
-    resolve:  Function; // Idle until resolved
-}; // Original broadcaster idles until execution finished and resolved
-export interface StreamlinedResponse {
-    status:   string;              // okay / no-tabs
-    payload?: BroadcastedResponse; // Response or error message
-}; // Response from queued request returned to original broadcaster
+import type { Writable } from "../../node_modules/svelte/store";
+import type { Deleter, Setter } from "../shared/types";
+
+// Wrapper for all background writables
+export interface WritableWrapper<Type> {
+    store: Writable<Type>;
+    set: Setter;
+    del: Deleter;
+};
+
+export type AddSyncRequest = (req: SyncContentRequestRaw) => Promise<[any, string[]]>;
+
 export interface BroadcastedRequest {
     handler: string;
     args:    any[];
-}; // Request payload broadcasted to targeted tab
+};
+export interface AsyncRequest extends BroadcastedRequest {
+    type: "async",
+};
+export interface SyncContentRequestRaw extends BroadcastedRequest {
+    type:     "sync",
+    urlMatch: string;
+}; // Request for communication with content scripts
+export interface SyncContentRequest extends SyncContentRequestRaw {
+    resolve: Function; 
+}; // Idle handler until resolved
+
 export interface BroadcastedResponse {
-    result:  string; // ok / error
-    payload: HandlerResponse;
-}; // Response payload from targeted tab, includes extra instructions
-export interface HandlerResponse {
-    value: any;
-    execute?: string[]; // reload
+    payload: any; // any | string
+};
+export interface AsyncResponse extends BroadcastedResponse {
+    result: "ok" | "error";
+};
+export interface SyncContentResponse extends BroadcastedResponse {
+    result:  "ok" | "error" | "not-found";
+    // payload undefined for not-found
+    execute: string[];
 };
 
 // Ping request to check tab reactivity
-export const pingRequest: BroadcastedRequest = {
+export const pingRequest: AsyncRequest = {
+    type: "async",
     handler: "ping",
     args: [],
 };
 
 // Default ping response for content script
-export async function contentPing(): Promise<HandlerResponse> {
+export async function contentPing(): Promise<SyncContentResponse> {
     return {
-        value: "okay",
+        result: "ok",
+        payload: "ping!",
+        execute: [],
     };
 }

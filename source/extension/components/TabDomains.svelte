@@ -5,7 +5,7 @@
     // Maintain URLs for currently opened tabs and update when needed
     let tabMappings: { [tabId: number]: string | undefined } = {};
     $: {
-        console.log(tabMappings);
+        (tabMappings);
         $tabURLs = Object.values(tabMappings).filter(url => url !== undefined) as string[];
     }
 

@@ -1,5 +1,4 @@
 import type { SvelteComponent } from "../../node_modules/svelte/types/runtime";
-import type { HandlerResponse } from "./types_new";
 
 // Setter and getter functions?
 export type Setter = (setKey: string, setValue: any) => void;

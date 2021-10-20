@@ -2,15 +2,15 @@
     import { onMount } from "svelte";
     import type { Writable } from "svelte/store";
     import InputValue from "../components/InputValue.svelte";
-    import { extensionSelf, settingLabels } from "../../shared/constants";
-    import type { Setter, Settings } from "../../shared/types";
-    import { extensionLog, initializeStore } from "../../shared/utilities";
+    import { extensionSelf, settingsDisplays } from "../../shared/constants";
+    import type { Settings } from "../../shared/types";
+    import type { WritableWrapper } from "../../shared/types_new";
+    import { extensionLog, initializeStore } from "../../shared/utilities_new";
 
     const self = extensionSelf;
-
-    // Declare stores initially to avoid errors
-    let settings: Writable<Settings>;
-    let setSettings: Setter;
+    // Initialize writables beforehand to prevent errors
+    let settings: WritableWrapper<Settings>;
+    let settings_store: Writable<Settings>; // For $ referencing
 
     // Update chunk of settings whenever input value changed
     async function updateSettings(event: CustomEvent<any>, categoryKey: string, settingKey: string) {
@@ -19,23 +19,24 @@
 
         extensionLog(self, `Updating setting [${categoryKey}][${settingKey}] to ${newValue}`);
 
-        const categorySettings = $settings[categoryKey]; 
+        const categorySettings = $settings_store[categoryKey]; 
         categorySettings[settingKey] = newValue;
-        setSettings(categoryKey, categorySettings);
+        settings.set(categoryKey, categorySettings);
     }
 
-    // Does not include destructor, don't care
+    // Async doesn't include destructor, don't care
     onMount(async function() {
-        // Initialize settings store and custom logic for broadcasting updates
-        ({ store: settings, set: setSettings } = await initializeStore<Settings>( "settings", {}));
+        // Initialize stores from Storage API
+        settings = await initializeStore<Settings>( "settings", {});
+        settings_store = settings.store; 
     });
 </script>
 
 <div class="flex-column column-spacing-small content">
     <!-- Only render when initialized for initial value -->
-    {#if $settings !== undefined}
+    {#if $settings_store !== undefined}
         <!-- Iterate over labels instead of settings to preserve order -->
-        {#each Object.entries(settingLabels) as [labelCategoryKey, labelCategoryData]}
+        {#each Object.entries(settingsDisplays) as [labelCategoryKey, labelCategoryData]}
             <p class="header">{labelCategoryData.display}</p>
             {#if labelCategoryData.description !== undefined}
                 <p>{labelCategoryData.description}</p>
@@ -46,8 +47,8 @@
                     Convoluted mess of || because of {} initial render -->
                     <InputValue display={labelSettingData.display}
                         initialValue={
-                            $settings[labelCategoryKey] && $settings[labelCategoryKey][labelSettingKey] !== undefined
-                            ? $settings[labelCategoryKey][labelSettingKey] : labelSettingData.default
+                            $settings_store[labelCategoryKey] && $settings_store[labelCategoryKey][labelSettingKey] !== undefined
+                            ? $settings_store[labelCategoryKey][labelSettingKey] : labelSettingData.default
                         }
                         args={labelSettingData.args || {}}
                         on:update={event => { updateSettings(event, labelCategoryKey, labelSettingKey) }}/>

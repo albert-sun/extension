@@ -2,8 +2,8 @@
     import Button from "./Button.svelte";
     import { bestBuyDisplays } from "../../shared/constants";
     import type { ProductQueueData } from "../../shared/types";
-    import { extensionLog, openPage, sendRequestBackground } from "../../shared/utilities";
-    import { minutesSeconds } from "../../shared/utilities";
+    import { extensionLog, minutesSeconds, openPage, sendRequestBackgroundAsync } from "../../shared/utilities_new";
+    import type { AsyncRequest } from "../../shared/types_new";
 
     export let remainingTime: number;        // [INPUT] Remaining time before queue pop, in milliseconds
     export let sku: string;                  // [INPUT] Product SKU for manual add-to-cart or page button
@@ -26,11 +26,12 @@
     async function manualAddToCart() {
         extensionLog("extension", `Attempting to add QUEUED ${productName} to cart`);
 
-        // Queue add-to-cart request 
-        await sendRequestBackground(
-            "process-add_to_cart",
-            [sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode],
-        ); // Send to background script which processes sequentially
+        const addRequest: AsyncRequest = {
+            type: "async",
+            handler: "background-add_to_cart",
+            args: [sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode],
+        }
+        sendRequestBackgroundAsync(addRequest);
     }
 
     // Broadcast queue deletion upwards with arguments
