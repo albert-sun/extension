@@ -1,19 +1,19 @@
 import { contentSelf } from "../shared/constants";
 import type { BestBuyClientQueueData, MessageHandlers } from "../shared/types";
-import { contentPing, HandlerResponse } from "../shared/types_new";
-import { extensionLog, messageProcessHandlers, sendRequestBackground } from "../shared/utilities";
+import type { BroadcastedRequest, ResponsePayload } from "../shared/types";
+import { contentPing, extensionLog, messageProcessHandlers, sendRequestBackground } from "../shared/utilities";
 
 const self = contentSelf; // Content script identifier
 const messageHandlers: MessageHandlers = {
     "ping": contentPing,
-    "process-add_to_cart": processAddtoCart,
+    "content-add_to_cart": processAddtoCart,
 }; // Message handlers for processing from Messages API
 
 // Send add-to-cart request, optionally with (assuming popped) queue data
 // Only return success / failure / error results, ignore new queue and response content
 async function processAddtoCart(
     sku: string, a2cTransactionReferenceId?: string, a2cTransactionCode?: string
-): Promise<HandlerResponse> {
+): Promise<ResponsePayload> {
     // Initialize headers and additionally add queue data if defined
     const headers: { [name: string]: string } = {
         "accept": "application/json",
@@ -40,14 +40,14 @@ async function processAddtoCart(
     });
 
     // Construct broadcasted payload depending on response
-    let execute: string[] | undefined;
+    let execute: string[] = [];
     if(addResponse.status !== 200 && addResponse.status !== 400) {
         // Not success or failure probably means error, notify reload
-        execute = ["reload", "retry"];
+        execute.push("reload", "retry");
     }
     
     return {
-        value: addResponse.status,
+        value: addResponse.status, 
         execute,
     };
 }
@@ -55,7 +55,7 @@ async function processAddtoCart(
 // General startup routine for content script
 async function startup() {
     // - Setup message receiving handlers and sending wrapper
-    messageProcessHandlers(self, messageHandlers, ["content", "background", "extension"]); 
+    messageProcessHandlers(self, messageHandlers); 
 
     extensionLog(self, "Finished processing content script startup routine");
 }
@@ -66,7 +66,13 @@ async function runtime() {
     // Can't intercept requests, instead intercept data manually?
     const serializedQueueData = atob(localStorage.getItem("purchaseTracker") || "e30=");
     const queueData = JSON.parse(serializedQueueData) as BestBuyClientQueueData;
-    sendRequestBackground("merge-bestbuy-product_queues", [queueData]); // Throw and forget
+
+    // Throw and forget merge request to background
+    const mergeRequest: BroadcastedRequest = {
+        handler: "merge-bestbuy-product_queues",
+        args: [queueData],
+    }
+    sendRequestBackground(mergeRequest); // Throw and forget
 }
 
 await startup();

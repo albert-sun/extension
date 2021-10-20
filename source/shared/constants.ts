@@ -1,21 +1,6 @@
 import { writable } from "../../node_modules/svelte/store";
-import type { ChangelogVersion, RawAccordionData, SettingLabels, Settings } from "./types";
-
-// Reduces raw accordion data to their respective displays
-function reduceDisplays(input: RawAccordionData): { [sku: string]: string } {
-    return Object.entries(input).reduce((obj, [_, rawCategoryData]) => {
-        obj = {
-            ...obj, 
-            ...Object.entries(rawCategoryData.items).reduce((subObj, [_, rawItemData]) => {
-                subObj[rawItemData.data] = rawItemData.display;
-        
-                return subObj;
-            }, {} as { [sku: string]: string }),
-        };
-        
-        return obj;
-    }, {} as { [sku: string]: string });
-}
+import type { BroadcastedRequest, ChangelogVersion, DomainMatches, RawAccordionData, SettingLabels, Settings } from "./types";
+import { reduceDisplays } from "./utilities";
 
 // Declare shared stores, NOTE that they can only be shared within the same context!
 export const tabURLs = writable([] as string[]); // tab URLs shared between components
@@ -24,9 +9,28 @@ export const tabURLs = writable([] as string[]); // tab URLs shared between comp
 export const backgroundSelf = "background";
 export const contentSelf = "content";
 export const extensionSelf = "extension";
+export const domainMatches: DomainMatches = {
+    "bestbuy": "https://*.bestbuy.com/*",
+}; // Domain matches for sending messages from background or extension
+export const pingRequest: BroadcastedRequest = {
+    handler: "ping",
+    args: [],
+}; // Ping request to check tab reactivity
+
 
 // Changelog for display purposes, most recent to oldest
 export const changelogs: ChangelogVersion[] = [
+    {
+        display: "Version 1.3.0",
+        bullets: [
+            "Another complete code refactor - moved Svelte files into individual TS files"
+                + "linked through a Svelte file for using writables and stuff",
+            "Fixed queues not actually replacing when either moving from multiple to single queue, "
+                + "or new queue being better and thus should overwrite old queue",
+            "Fixed excessive pings to browser because of undefined setting (set to 100ms instead)",
+            "Added exception handling just in case extension hangs if synchronous requests error out",
+        ]
+    },
     {
         display: "Version 1.2.0",
         bullets: [
@@ -75,7 +79,7 @@ export const changelogs: ChangelogVersion[] = [
 ];
 
 // Settings including default for initialization and labels
-export const settingLabels: SettingLabels = {
+export const settingsDisplays: SettingLabels = {
     "global": {
         display: "Global Settings",
         description: "Note that pop-up notifications can obscure the screen and forcefully change window focus when clicked - don't enable notifications if you're playing games!",
@@ -114,7 +118,7 @@ export const settingLabels: SettingLabels = {
                 default: true,
             },
             "replaceQueue": {
-                display: "Maintain shortest instead of multiple queues per SKU",
+                display: "Maintain shortest queue per SKU instead of multiple",
                 default: true,
             },
             "requeueSuccess": {
@@ -293,5 +297,3 @@ export const rawBestBuyItems: RawAccordionData = {
     },
 };
 export const bestBuyDisplays: { [sku: string]: string } = reduceDisplays(rawBestBuyItems);
-
-// EVGA data for manual add-to-cart and display

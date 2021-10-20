@@ -1,20 +1,18 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import type { Writable } from "svelte/store";
+    import { get } from "svelte/store";
     import Accordion from "../components/Accordion.svelte";
     import Button from "../components/Button.svelte";
     import QueueInfo from "../components/QueueInfo.svelte";
     import TabHeader from "../components/TabHeader.svelte";
     import { bestBuyDisplays, rawBestBuyItems } from "../../shared/constants";
-    import type { AccordionData, AccordionItemData, BestBuyQueuesData, Setter, Settings } from "../../shared/types";
-    import { extensionLog, initializeStore, sendRequestBackground } from "../../shared/utilities";
+    import { bestBuyQueues, settings } from "../../shared/initializations";
+    import type { AccordionData, AccordionItemData, BroadcastedRequest } from "../../shared/types";
+    import { extensionLog, sendRequestBackground } from "../../shared/utilities";
     
     const urlMatch = "https://*.bestbuy.com/*";
     const openURL = "https://www.bestbuy.com/";
     let matches = false; // Whether content script found
-    let queues: Writable<BestBuyQueuesData>;
-    let setQueues: Setter;
-    let settings: Writable<Settings>;
     let autoOpenTab: boolean; // Derived from settings
 
     // When button clicked, add item to cart (without queue d ata)
@@ -23,20 +21,20 @@
 
         extensionLog("extension", `Attempting to add ${productName} to cart from extension`);
 
-        // Queue add-to-cart request sequentially
-        await sendRequestBackground(
-            "process-add_to_cart",
-            [sku],
-        );
+        const addRequest: BroadcastedRequest = {
+            handler: "background-add_to_cart",
+            args: [sku],
+        }
+        sendRequestBackground(addRequest);
     }
 
     // Delete given queue and broadcast update
     async function deleteQueue(sku: string, queueId: string) {
         extensionLog("extension", `Deleting given queue from sku ${sku}`)
 
-        const skuQueueData = $queues[sku] || {}; // Failsafe
+        const skuQueueData = get(bestBuyQueues.store)[sku] || {}; // Failsafe
         delete skuQueueData[queueId];
-        setQueues(sku, skuQueueData);
+        bestBuyQueues.set(sku, skuQueueData);
     }
 
     // Re-calculate and re-render the queue data
@@ -44,7 +42,7 @@
     function updateQueueData() {
         // Construct the accordion data before sorting by remaining time?
         const currentTime = new Date().getTime();
-        const accordionQueueData = Object.entries($queues).reduce((obj, [sku, skuQueueData]) => {
+        const accordionQueueData = Object.entries(get(bestBuyQueues.store)).reduce((obj, [sku, skuQueueData]) => {
             // Iterate over SKU queue data and add to aggregate
             for(const [queueId, queueData] of Object.entries(skuQueueData)) {
                 // Calculate remaining time for sorting purposes
@@ -105,16 +103,14 @@
 
     // Does not include destructor, don't care
     onMount(async function() {
-        // Initialize various stores (ignore setter and deleter because read-only)
-        ({ store: queues, set: setQueues } = await initializeStore<BestBuyQueuesData>( "queues", {}));
-        ({ store: settings } = await initializeStore<Settings>( "settings", {}));
-        settings.subscribe(value => { 
+        // Setup subscriber to update auto-open tab from settings
+        settings.store.subscribe(value => { 
             autoOpenTab = (value["global"] || {})["autoOpenTab"] as boolean;
         }); // Derive individual setting from global setting
 
         // Run re-render on interval and on queue update
         setInterval(() => { updateQueueData() }, 250);
-        queues.subscribe(_ => { updateQueueData() });
+        bestBuyQueues.store.subscribe(_ => { updateQueueData() });
     });
 </script>
 

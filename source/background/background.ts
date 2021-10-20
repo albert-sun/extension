@@ -1,4 +1,4 @@
-import Background from "./components/Background.svelte"
+import Background from "./Background.svelte"
 
 const app = new Background({
 	target: document.body,
