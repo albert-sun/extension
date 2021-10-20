@@ -92,8 +92,6 @@ export function setupBestBuyRequestHandlers() {
                     // No improvement, clear stragglers and show notification
                     message = `[${productName}] Queue replacement enabled, not replacing because ${diffMinutes}m ${diffSeconds}s worse`;
                 }
-                console.debug(shorter);
-                console.debug(JSON.stringify(existingQueues));
             } else {
                 message = `[${productName}] Intercepted new queue with timer ${minutes}m ${seconds}s`;
                 // Otherwise, perform regular "appending" to queues
@@ -208,9 +206,7 @@ export async function processAddToCart(
     do {
         extensionLog(loggingSelf, "Broadcasting soon-queued synchronous add-to-cart request");
 
-        console.log("before sync")
         let processAddResponse = await addSyncRequest(syncRequest, "bestbuy");
-        console.log(processAddResponse)
         if(processAddResponse.result === "error") {
             // Error performing request to background, should never happen
             extensionLog(loggingSelf, `Error performing streamlined add-to-cart request: ${processAddResponse.payload}`);
