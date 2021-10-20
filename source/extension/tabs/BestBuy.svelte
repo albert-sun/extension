@@ -1,25 +1,20 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import type { Writable } from "svelte/store";
+    import { get } from "svelte/store";
     import Accordion from "../components/Accordion.svelte";
     import Button from "../components/Button.svelte";
     import QueueInfo from "../components/QueueInfo.svelte";
     import TabHeader from "../components/TabHeader.svelte";
     import { bestBuyDisplays, rawBestBuyItems } from "../../shared/constants";
-    import type { AccordionData, AccordionItemData, BestBuyQueuesData, Setter, Settings } from "../../shared/types";
-    import { extensionLog, initializeStore, sendRequestBackgroundAsync } from "../../shared/utilities_new";
-    import type { AsyncRequest, WritableWrapper } from "../../shared/types_new";
+    import type { AccordionData, AccordionItemData, Setter } from "../../shared/types";
+    import { extensionLog, sendRequestBackground } from "../../shared/utilities_new";
+    import type { BroadcastedRequest } from "../../shared/types_new";
+    import { bestBuyQueues, settings } from "../../shared/constants_new";
     
     const urlMatch = "https://*.bestbuy.com/*";
     const openURL = "https://www.bestbuy.com/";
     let matches = false; // Whether content script found
-    let setQueues: Setter;
     let autoOpenTab: boolean; // Derived from settings
-    // Initialize writables beforehand to prevent errors
-    let bestBuyQueues: WritableWrapper<BestBuyQueuesData>;
-    let bestBuyQueues_store: Writable<BestBuyQueuesData>; // For $ referencing
-    let settings: WritableWrapper<Settings>;
-    let settings_store: Writable<Settings>; // For $ referencing
 
     // When button clicked, add item to cart (without queue d ata)
     async function addToCart(sku: string) {
@@ -27,21 +22,20 @@
 
         extensionLog("extension", `Attempting to add ${productName} to cart from extension`);
 
-        const addRequest: AsyncRequest = {
-            type: "async",
+        const addRequest: BroadcastedRequest = {
             handler: "background-add_to_cart",
             args: [sku],
         }
-        sendRequestBackgroundAsync(addRequest);
+        sendRequestBackground(addRequest);
     }
 
     // Delete given queue and broadcast update
     async function deleteQueue(sku: string, queueId: string) {
         extensionLog("extension", `Deleting given queue from sku ${sku}`)
 
-        const skuQueueData = $bestBuyQueues_store[sku] || {}; // Failsafe
+        const skuQueueData = get(bestBuyQueues.store)[sku] || {}; // Failsafe
         delete skuQueueData[queueId];
-        setQueues(sku, skuQueueData);
+        bestBuyQueues.set(sku, skuQueueData);
     }
 
     // Re-calculate and re-render the queue data
@@ -49,7 +43,7 @@
     function updateQueueData() {
         // Construct the accordion data before sorting by remaining time?
         const currentTime = new Date().getTime();
-        const accordionQueueData = Object.entries($bestBuyQueues_store).reduce((obj, [sku, skuQueueData]) => {
+        const accordionQueueData = Object.entries(get(bestBuyQueues.store)).reduce((obj, [sku, skuQueueData]) => {
             // Iterate over SKU queue data and add to aggregate
             for(const [queueId, queueData] of Object.entries(skuQueueData)) {
                 // Calculate remaining time for sorting purposes
@@ -110,20 +104,14 @@
 
     // Does not include destructor, don't care
     onMount(async function() {
-        // Initialize stores from Storage API
-        bestBuyQueues = await initializeStore<BestBuyQueuesData>( "bestbuy-queues", {});
-        bestBuyQueues_store = bestBuyQueues.store;
-        settings = await initializeStore<Settings>( "settings", {});
-        settings_store = settings.store; 
-
         // Setup subscriber to update auto-open tab from settings
-        settings_store.subscribe(value => { 
+        settings.store.subscribe(value => { 
             autoOpenTab = (value["global"] || {})["autoOpenTab"] as boolean;
         }); // Derive individual setting from global setting
 
         // Run re-render on interval and on queue update
         setInterval(() => { updateQueueData() }, 250);
-        bestBuyQueues_store.subscribe(_ => { updateQueueData() });
+        bestBuyQueues.store.subscribe(_ => { updateQueueData() });
     });
 </script>
 

@@ -8,47 +8,36 @@ export interface WritableWrapper<Type> {
     del: Deleter;
 };
 
-export type AddSyncRequest = (req: SyncContentRequestRaw) => Promise<[any, string[]]>;
-
 export interface BroadcastedRequest {
     handler: string;
     args:    any[];
 };
-export interface AsyncRequest extends BroadcastedRequest {
-    type: "async",
-};
-export interface SyncContentRequestRaw extends BroadcastedRequest {
-    type:     "sync",
-    urlMatch: string;
-}; // Request for communication with content scripts
-export interface SyncContentRequest extends SyncContentRequestRaw {
-    resolve: Function; 
-}; // Idle handler until resolved
-
 export interface BroadcastedResponse {
-    payload: any; // any | string
-};
-export interface AsyncResponse extends BroadcastedResponse {
-    result: "ok" | "error";
-};
-export interface SyncContentResponse extends BroadcastedResponse {
     result:  "ok" | "error" | "not-found";
-    // payload undefined for not-found
+    payload: ResponsePayload;
+};
+export interface ResponsePayload {
+    value:   any;
     execute: string[];
+};
+export interface SyncRequest extends BroadcastedRequest {
+    urlMatch: string;
+    resolve:  Function; // Idle until resolution
 };
 
 // Ping request to check tab reactivity
-export const pingRequest: AsyncRequest = {
-    type: "async",
+export const pingRequest: BroadcastedRequest = {
     handler: "ping",
     args: [],
 };
 
 // Default ping response for content script
-export async function contentPing(): Promise<SyncContentResponse> {
+export async function contentPing(): Promise<BroadcastedResponse> {
     return {
         result: "ok",
-        payload: "ping!",
-        execute: [],
+        payload: {
+            value: "ping!",
+            execute: [],
+        }
     };
 }

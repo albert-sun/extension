@@ -1,6 +1,6 @@
 import { get, writable, Writable } from "../../node_modules/svelte/store";
 import type { MessageHandlers } from "./types";
-import { AddSyncRequest, AsyncRequest, AsyncResponse, pingRequest, SyncContentRequestRaw, SyncContentResponse } from "./types_new";
+import { BroadcastedRequest, BroadcastedResponse, pingRequest } from "./types_new";
 
 // https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
 export function sleep(ms: number) {
@@ -36,118 +36,82 @@ export function extensionLog(sender: string, message: string, level: string = "i
 }
 
 // Initializes message receiving for given content script with key and handlers
-export function messageProcessHandlers(
-    contentKey: string, handlers: MessageHandlers, addSyncRequest?: AddSyncRequest,
-) {
+export function messageProcessHandlers(contentKey: string, handlers: MessageHandlers) {
     // Setup listener for snooping messages and executing matching handlers
     browser.runtime.onMessage.addListener(async (message, sender) => {
-        const request = message as AsyncRequest | SyncContentRequestRaw;
-        console.log("receive");
-        console.log(request);
+        console.log("<= received")
+        console.log(message);
 
+        const request = message as BroadcastedRequest;
+        let response: BroadcastedResponse = { 
+            result: "ok", 
+            payload: {
+                value: undefined,
+                execute: [],
+            },
+        }; // Placeholder response before construction
+            
         // Check whether handler exists, messages are targeted
         const handler = handlers[request.handler];
-        if(request.type === "sync" || handler !== undefined) {
-            console.log("got");
+        if(handler !== undefined) {
+            extensionLog(contentKey, `Processing handler ${request.handler} with arguments ${JSON.stringify(request.args)}`);
 
-            extensionLog(contentKey, `Processing ${request.type} handler ${request.handler} with arguments ${JSON.stringify(request.args)}`);
-
-            if(request.type === "async") {
-                // Prepare response beforehand
-                const response: AsyncResponse = {
-                    result: "ok",
-                    payload: undefined,
+            // Handler exists, attempt to execute
+            try {
+                const payload = await handler(...request.args || []);
+                response.result = "ok";
+                response.payload = payload; // Non-serialized
+            } catch(error) {
+                const errorMessage = (error as Error).message;
+                response.result = "error";
+                response.payload = {
+                    value: errorMessage,
+                    execute: [],
                 };
 
-                // Return errored result if thrown
-                try {
-                    // Execute handler asynchronously
-                    const payload = await handler(...request.args || []);
-                    response.payload = payload;
-                } catch(err) {
-                    response.result = "error";
-                    response.payload = (err as Error).message;
-                }
-
-                return response;
-            } else if(request.type === "sync") {
-                console.log("sync");
-
-                // Prepare response beforehand
-                const response: SyncContentResponse = {
-                    result: "ok",
-                    payload: undefined,
-                    execute: [],
-                }
-
-                // Return errored response if thrown
-                addSyncRequest = addSyncRequest as AddSyncRequest;
-                try {
-                    // Execute handler synchronously
-                    const [payload, execute] = await addSyncRequest(request);
-                    response.payload = payload;
-                    response.execute = execute;
-                } catch(err) {
-                    response.result = "error";
-                    response.payload = (err as Error).message;
-                }
-
-                return response;
+                extensionLog(contentKey, `Error processing handler ${request.handler}: ${errorMessage}`, "error");
             }
         } 
 
-        throw new Error(`couldn't find handler ${request.handler}`);
+        return response;
     });
 }
 
-// Resolve/reject wrapper for sending asynchronous requests to background
+// Resolve/reject wrapper for sending requests to background
 // Currently doesn't implement timeout but maybe later?
-export async function sendRequestBackgroundAsync(
-    request: AsyncRequest,
-): Promise<AsyncResponse> {
-    console.log("async");
+export async function sendRequestBackground(
+    request: BroadcastedRequest,
+): Promise<BroadcastedResponse> {
+    console.log("=> sent")
     console.log(request);
+
     return await new Promise((resolve) => {
         browser.runtime.sendMessage(request)
-            .then(response => resolve(response as AsyncResponse)) // Successful
+            .then(response => resolve(response as BroadcastedResponse)) // Successful
             .catch(error => resolve({
                 result: "error",
-                payload: (error as Error).message,
+                payload: {
+                    value: (error as Error).message,
+                    execute: [],
+                },
             })); // Failed, probably no message link
     });
 }
 
-// Resolve/reject wrapper for sending synchronous requests to background
+// Resolve/reject wrapper for sending requests to tab
 // Currently doesn't implement timeout but maybe later?
-export async function sendRequestBackgroundSync(
-    request: SyncContentRequestRaw,
-): Promise<SyncContentResponse> {
-    console.log("sync");
-    console.log(request);
-    return await new Promise((resolve) => {
-        browser.runtime.sendMessage(request)
-            .then(response => resolve(response as SyncContentResponse)) // Successful
-            .catch(error => resolve({
-                result: "error",
-                payload: (error as Error).message,
-                execute: [],
-            })); // Failed, probably no message link
-    });
-}
-
-// Resolve/reject wrapper for sending asynchronous requests to tab
-// Currently doesn't implement timeout but maybe later?
-export async function sendRequestContentAsync(
-    tabId: number, request: AsyncRequest
-): Promise<AsyncResponse> {
-    console.log("tab");
-    console.log(request);
+export async function sendRequestContent(
+    tabId: number, request: BroadcastedRequest
+): Promise<BroadcastedResponse> {
     return await new Promise((resolve) => {
         browser.tabs.sendMessage(tabId, request)
-            .then(response => resolve(response as AsyncResponse)) // Successful
+            .then(response => resolve(response as BroadcastedResponse)) // Successful
             .catch(error => resolve({
                 result: "error",
-                payload: (error as Error).message,
+                payload: {
+                    value: (error as Error).message,
+                    execute: [],
+                },
             })); // Failed, probably no message link
     });
 }
@@ -183,12 +147,11 @@ export async function initializeStore<Type>(key: string, defaultValue: Type) {
         browser.storage.local.set({ [key]: get(store) });
 
         // Throw and forget update broadcast
-        const updateRequest: AsyncRequest = {
-            type: "async",
+        const updateRequest: BroadcastedRequest = {
             handler: "update-set",
             args: [key, setKey, setValue],
         };
-        sendRequestBackgroundAsync(updateRequest);
+        sendRequestBackground(updateRequest);
     }; // Setter to broadcast key set update
     const del = (delKey: string) => {
         // Update writable store and Storage API
@@ -196,18 +159,17 @@ export async function initializeStore<Type>(key: string, defaultValue: Type) {
         browser.storage.local.set({ [key]: get(store) });
 
         // Throw and forget update broadcast
-        const updateRequest: AsyncRequest = {
-            type: "async",
+        const updateRequest: BroadcastedRequest = {
             handler: "update-del",
             args: [key, delKey],
         };
-        sendRequestBackgroundAsync(updateRequest);
+        sendRequestBackground(updateRequest);
     }; // Deleter to broadcast key delete update
 
     // Attach additional message listener to listen for updates
     browser.runtime.onMessage.addListener(async (message, sender) => {
         // Check whether key matches and perform update or deletion
-        const request = message as AsyncRequest;
+        const request = message as BroadcastedRequest;
         if(request.handler === "update-set") {
             // Deconstruct arguments and set/replace key in store
             const [storeKey, setKey, setValue] = request.args as [string, string, any];
@@ -233,9 +195,8 @@ export async function initializeStore<Type>(key: string, defaultValue: Type) {
 export async function pingTabReady(tabId: number, pollingInterval: number, ready: boolean = true) {
     // Keep pinging until tab responds
     while(ready === true) {
-        const pingResponse = await sendRequestContentAsync(tabId, pingRequest);
-        console.log(pingResponse);
-        if(pingResponse !== undefined && typeof pingResponse !== "string") { // Successfully communicated with tab
+        const pingResponse = await sendRequestContent(tabId, pingRequest);
+        if(pingResponse.result === "ok") { // Successfully communicated with tab
             break;
         }
         await sleep(pollingInterval);

@@ -1,7 +1,7 @@
 import { contentSelf } from "../shared/constants";
 import type { BestBuyClientQueueData, MessageHandlers } from "../shared/types";
-import { AsyncRequest, contentPing } from "../shared/types_new";
-import { extensionLog, messageProcessHandlers, sendRequestBackgroundAsync } from "../shared/utilities_new";
+import { BroadcastedRequest, contentPing, ResponsePayload } from "../shared/types_new";
+import { extensionLog, messageProcessHandlers, sendRequestBackground } from "../shared/utilities_new";
 
 const self = contentSelf; // Content script identifier
 const messageHandlers: MessageHandlers = {
@@ -13,7 +13,7 @@ const messageHandlers: MessageHandlers = {
 // Only return success / failure / error results, ignore new queue and response content
 async function processAddtoCart(
     sku: string, a2cTransactionReferenceId?: string, a2cTransactionCode?: string
-): Promise<[any, string[]]> {
+): Promise<ResponsePayload> {
     // Initialize headers and additionally add queue data if defined
     const headers: { [name: string]: string } = {
         "accept": "application/json",
@@ -46,7 +46,10 @@ async function processAddtoCart(
         execute.push("reload", "retry");
     }
     
-    return [addResponse.status, execute];
+    return {
+        value: addResponse.status, 
+        execute,
+    };
 }
 
 // General startup routine for content script
@@ -65,12 +68,11 @@ async function runtime() {
     const queueData = JSON.parse(serializedQueueData) as BestBuyClientQueueData;
 
     // Throw and forget merge request to background
-    const mergeRequest: AsyncRequest = {
-        type: "async",
+    const mergeRequest: BroadcastedRequest = {
         handler: "merge-bestbuy-product_queues",
         args: [queueData],
     }
-    sendRequestBackgroundAsync(mergeRequest); // Throw and forget
+    sendRequestBackground(mergeRequest); // Throw and forget
 }
 
 await startup();
