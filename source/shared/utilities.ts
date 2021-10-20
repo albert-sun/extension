@@ -1,6 +1,7 @@
 import { get, writable, Writable } from "../../node_modules/svelte/store";
-import type { MessageHandlers } from "./types";
-import { BroadcastedRequest, BroadcastedResponse, pingRequest } from "./types_new";
+import { pingRequest } from "./constants";
+import type { MessageHandlers, RawAccordionData } from "./types";
+import type { BroadcastedRequest, BroadcastedResponse } from "./types";
 
 // https://stackoverflow.com/questions/951021/what-is-the-javascript-version-of-sleep
 export function sleep(ms: number) {
@@ -11,6 +12,22 @@ export function sleep(ms: number) {
 export function urlGlob(pattern: string, input: string) {
     var re = new RegExp(pattern.replace(/([.?+^$[\]\\(){}|\/-])/g, "\\$1").replace(/\*/g, '.*'));
     return re.test(input);
+}
+
+// Reduces raw accordion data to their respective displays
+export function reduceDisplays(input: RawAccordionData): { [sku: string]: string } {
+    return Object.entries(input).reduce((obj, [_, rawCategoryData]) => {
+        obj = {
+            ...obj, 
+            ...Object.entries(rawCategoryData.items).reduce((subObj, [_, rawItemData]) => {
+                subObj[rawItemData.data] = rawItemData.display;
+        
+                return subObj;
+            }, {} as { [sku: string]: string }),
+        };
+        
+        return obj;
+    }, {} as { [sku: string]: string });
 }
 
 // Somewhat fancy logging from extension background
@@ -33,6 +50,17 @@ export function extensionLog(sender: string, message: string, level: string = "i
     } else if(level === "error") {
         console.error(output);
     }
+}
+
+// Default ping response for content script
+export async function contentPing(): Promise<BroadcastedResponse> {
+    return {
+        result: "ok",
+        payload: {
+            value: "ping!",
+            execute: [],
+        }
+    };
 }
 
 // Initializes message receiving for given content script with key and handlers
@@ -61,6 +89,9 @@ export function messageProcessHandlers(contentKey: string, handlers: MessageHand
                 const payload = await handler(...request.args || []);
                 response.result = "ok";
                 response.payload = payload; // Non-serialized
+
+                console.log("== return")
+                console.log(response)
             } catch(error) {
                 const errorMessage = (error as Error).message;
                 response.result = "error";
@@ -106,13 +137,22 @@ export async function sendRequestContent(
     return await new Promise((resolve) => {
         browser.tabs.sendMessage(tabId, request)
             .then(response => resolve(response as BroadcastedResponse)) // Successful
-            .catch(error => resolve({
-                result: "error",
-                payload: {
-                    value: (error as Error).message,
-                    execute: [],
-                },
-            })); // Failed, probably no message link
+            .catch(error => { 
+                console.log({
+                    result: "error",
+                    payload: {
+                        value: (error as Error).message,
+                        execute: [],
+                    },
+                });
+                resolve({
+                    result: "error",
+                    payload: {
+                        value: (error as Error).message,
+                        execute: [],
+                    },
+                })
+            }); // Failed, probably no message link
     });
 }
 

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import type { MessageHandlers } from "../shared/types";
-    import { messageProcessHandlers } from "../shared/utilities_new";
+    import { messageProcessHandlers } from "../shared/utilities";
     import { mergeProductQueues, processAddToCart, setupBestBuyRequestHandlers } from "./module_bestbuy";
     import { addSyncRequest, createTabReady, mergeSettings, soundNotification } from "./module_main";
 

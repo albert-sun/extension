@@ -1,8 +1,32 @@
+import type { Writable } from "../../node_modules/svelte/store";
 import type { SvelteComponent } from "../../node_modules/svelte/types/runtime";
 
-// Setter and getter functions?
+// Wrapper for all background writables
+export interface WritableWrapper<Type> {
+    store: Writable<Type>;
+    set: Setter;
+    del: Deleter;
+};
 export type Setter = (setKey: string, setValue: any) => void;
 export type Deleter = (delKey: string) => void;
+
+// Types for broadcasted requests through Messages API
+export interface BroadcastedRequest {
+    handler: string;
+    args:    any[];
+};
+export interface BroadcastedResponse {
+    result:  "ok" | "error" | "not-found";
+    payload: ResponsePayload;
+};
+export interface ResponsePayload {
+    value:   any;
+    execute: string[];
+};
+export interface SyncRequest extends BroadcastedRequest {
+    urlMatch: string;
+    resolve:  Function; // Idle until resolution
+};
 
 // Raw data for accordion generation within constants.ts
 export interface RawAccordionData {

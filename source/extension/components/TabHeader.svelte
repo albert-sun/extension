@@ -1,6 +1,6 @@
 <script lang="ts">
     import { tabURLs } from "../../shared/constants";
-    import { urlGlob } from "../../shared/utilities_new";
+    import { urlGlob } from "../../shared/utilities";
 
     export let urlMatch: string;  // [INPUT] URL match to check open tabs for
     export let openURL: string;   // [INPUT] URL to open when button clicked

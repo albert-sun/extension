@@ -1,29 +1,25 @@
 import { writable } from "../../node_modules/svelte/store";
-import type { ChangelogVersion, RawAccordionData, SettingLabels, Settings } from "./types";
-
-// Reduces raw accordion data to their respective displays
-function reduceDisplays(input: RawAccordionData): { [sku: string]: string } {
-    return Object.entries(input).reduce((obj, [_, rawCategoryData]) => {
-        obj = {
-            ...obj, 
-            ...Object.entries(rawCategoryData.items).reduce((subObj, [_, rawItemData]) => {
-                subObj[rawItemData.data] = rawItemData.display;
-        
-                return subObj;
-            }, {} as { [sku: string]: string }),
-        };
-        
-        return obj;
-    }, {} as { [sku: string]: string });
-}
+import type { BestBuyQueuesData, BroadcastedRequest, ChangelogVersion, DomainMatches, RawAccordionData, SettingLabels, Settings } from "./types";
+import type { WritableWrapper } from "./types";
+import { initializeStore, reduceDisplays } from "./utilities";
 
 // Declare shared stores, NOTE that they can only be shared within the same context!
 export const tabURLs = writable([] as string[]); // tab URLs shared between components
+export const settings: WritableWrapper<Settings> = await initializeStore<Settings>( "settings", {});
+export const bestBuyQueues: WritableWrapper<BestBuyQueuesData> = await initializeStore<BestBuyQueuesData>( "bestbuy-queues", {});
 
 // Aggregate self-identification keys
 export const backgroundSelf = "background";
 export const contentSelf = "content";
 export const extensionSelf = "extension";
+export const domainMatches: DomainMatches = {
+    "bestbuy": "https://*.bestbuy.com/*",
+}; // Domain matches for sending messages from background or extension
+export const pingRequest: BroadcastedRequest = {
+    handler: "ping",
+    args: [],
+}; // Ping request to check tab reactivity
+
 
 // Changelog for display purposes, most recent to oldest
 export const changelogs: ChangelogVersion[] = [

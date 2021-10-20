@@ -2,8 +2,8 @@
     import Button from "./Button.svelte";
     import { bestBuyDisplays } from "../../shared/constants";
     import type { ProductQueueData } from "../../shared/types";
-    import { extensionLog, minutesSeconds, openPage, sendRequestBackground } from "../../shared/utilities_new";
-    import type { BroadcastedRequest } from "../../shared/types_new";
+    import { extensionLog, minutesSeconds, openPage, sendRequestBackground } from "../../shared/utilities";
+    import type { BroadcastedRequest } from "../../shared/types";
 
     export let remainingTime: number;        // [INPUT] Remaining time before queue pop, in milliseconds
     export let sku: string;                  // [INPUT] Product SKU for manual add-to-cart or page button

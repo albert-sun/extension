@@ -1,7 +1,7 @@
 import { contentSelf } from "../shared/constants";
 import type { BestBuyClientQueueData, MessageHandlers } from "../shared/types";
-import { BroadcastedRequest, contentPing, ResponsePayload } from "../shared/types_new";
-import { extensionLog, messageProcessHandlers, sendRequestBackground } from "../shared/utilities_new";
+import type { BroadcastedRequest, ResponsePayload } from "../shared/types";
+import { contentPing, extensionLog, messageProcessHandlers, sendRequestBackground } from "../shared/utilities";
 
 const self = contentSelf; // Content script identifier
 const messageHandlers: MessageHandlers = {

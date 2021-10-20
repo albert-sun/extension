@@ -1,9 +1,9 @@
 import { get } from "../../node_modules/svelte/store";
 import { bestBuyDisplays } from "../shared/constants";
-import { bestBuyQueues, settings } from "../shared/constants_new";
+import { bestBuyQueues, settings } from "../shared/constants";
 import type { BestBuyClientQueueData, BestBuySKUQueuesData, ProductQueueData } from "../shared/types";
-import type { BroadcastedRequest } from "../shared/types_new";
-import { bestBuyDecodeQueue, extensionLog, minutesSeconds } from "../shared/utilities_new";
+import type { BroadcastedRequest } from "../shared/types";
+import { bestBuyDecodeQueue, extensionLog, minutesSeconds } from "../shared/utilities";
 import { addSyncRequest, createTabReady, soundNotification } from "./module_main";
 
 interface AddToCartBody { 
@@ -208,7 +208,9 @@ export async function processAddToCart(
     do {
         extensionLog(loggingSelf, "Broadcasting soon-queued synchronous add-to-cart request");
 
+        console.log("before sync")
         let processAddResponse = await addSyncRequest(syncRequest, "bestbuy");
+        console.log(processAddResponse)
         if(processAddResponse.result === "error") {
             // Error performing request to background, should never happen
             extensionLog(loggingSelf, `Error performing streamlined add-to-cart request: ${processAddResponse.payload}`);
@@ -271,6 +273,7 @@ export async function processAddToCart(
             "Best Buy - Successful Cart",
             productName,
             ["bestbuy", "notificationSuccess"],
+            ["Go to Cart Page"]
         )
         
         // Attach onclick handler to open cart tab when notification button clicked

@@ -1,6 +1,5 @@
 <script lang="ts">
-import { openPage } from "../../shared/utilities_new";
-
+    import { openPage } from "../../shared/utilities";
 
     const version = browser.runtime.getManifest().version;
     const extensionGithubURL = "https://github.com/albert-sun/extension";

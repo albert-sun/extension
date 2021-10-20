@@ -7,9 +7,9 @@
     import TabHeader from "../components/TabHeader.svelte";
     import { bestBuyDisplays, rawBestBuyItems } from "../../shared/constants";
     import type { AccordionData, AccordionItemData, Setter } from "../../shared/types";
-    import { extensionLog, sendRequestBackground } from "../../shared/utilities_new";
-    import type { BroadcastedRequest } from "../../shared/types_new";
-    import { bestBuyQueues, settings } from "../../shared/constants_new";
+    import { extensionLog, sendRequestBackground } from "../../shared/utilities";
+    import type { BroadcastedRequest } from "../../shared/types";
+    import { bestBuyQueues, settings } from "../../shared/constants";
     
     const urlMatch = "https://*.bestbuy.com/*";
     const openURL = "https://www.bestbuy.com/";

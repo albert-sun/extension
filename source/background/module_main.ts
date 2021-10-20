@@ -1,9 +1,9 @@
 import { get } from "svelte/store";
 import { settingsDisplays } from "../shared/constants";
-import { domainMatches, settings } from "../shared/constants_new";
+import { domainMatches, pingRequest, settings } from "../shared/constants";
 import type { SettingsCategory } from "../shared/types";
-import { BroadcastedRequest, BroadcastedResponse, pingRequest, SyncRequest } from "../shared/types_new";
-import { extensionLog, pingTabReady, sendRequestContent, sleep } from "../shared/utilities_new";
+import type { BroadcastedRequest, BroadcastedResponse, SyncRequest } from "../shared/types";
+import { extensionLog, pingTabReady, sendRequestContent, sleep } from "../shared/utilities";
 
 const loggingSelf = "background_main";
 let notifications: { [key: string]: string } = {
@@ -65,101 +65,116 @@ async function performSyncRequests() {
     }
     executing = true; // Lock running instance
 
-    // Perform queued requests sync while they exist, and resolve each
-    while(queuedRequests.length > 0) {
-        // Initialize queued request and default response for given request
-        const queuedRequest = queuedRequests.shift() as SyncRequest;
-        const queuedResponse: BroadcastedResponse = {
-            result: "not-found",
-            payload: {
-                value: undefined,
-                execute: [],
-            },
-        };
+    // In case of critical error, still be able to close execution
+    try {
+        // Perform queued requests sync while they exist, and resolve each
+        while(queuedRequests.length > 0) {
+            // Initialize queued request and default response for given request
+            const queuedRequest = queuedRequests.shift() as SyncRequest;
+            const queuedResponse: BroadcastedResponse = {
+                result: "not-found",
+                payload: {
+                    value: undefined,
+                    execute: [],
+                },
+            };
 
-        const serializedRequest = JSON.stringify(queuedRequest);
-        extensionLog(loggingSelf, `Executing queued sequential request with body ${serializedRequest}`);
+            const serializedRequest = JSON.stringify(queuedRequest);
+            extensionLog(loggingSelf, `Executing queued sequential request with body ${serializedRequest}`);
 
-        // Check whether tabs matching given URL match exist
-        const urlGlob = domainMatches[queuedRequest?.urlMatch];
-        const matchingTabs = await browser.tabs.query({ 
-            url: domainMatches[queuedRequest?.urlMatch],
-            discarded: false, // Can't communicate with unloaded tab
-            // status: "loading" // Can't communicate with loading tab
-        });
-        if(matchingTabs.length === 0) {
-            extensionLog(loggingSelf, `Couldn't find matching browser tabs with URL glob ${urlGlob}, resolving with not-found response`);
+            // Check whether tabs matching given URL match exist
+            const urlGlob = domainMatches[queuedRequest?.urlMatch];
+            const matchingTabs = await browser.tabs.query({ 
+                url: domainMatches[queuedRequest?.urlMatch],
+                discarded: false, // Can't communicate with unloaded tab
+                // status: "loading" // Can't communicate with loading tab
+            });
+            if(matchingTabs.length === 0) {
+                extensionLog(loggingSelf, `Couldn't find matching browser tabs with URL glob ${urlGlob}, resolving with not-found response`);
 
-            // Perform execution depending on setting
-            // For now, resolve with undefined but maybe open tab?
-            queuedRequest.resolve(queuedResponse);
-        }
+                // Perform execution depending on setting
+                // For now, resolve with undefined but maybe open tab?
+                queuedRequest.resolve(queuedResponse);
+            }
 
-        // Iterate over tabs and attempt communication
-        let retryRequest = false;
-        for(const tab of matchingTabs) {
-            extensionLog(loggingSelf, `Attempting to ping tab with ID ${tab.id} and URL ${tab.url}`);
+            // Iterate over tabs and attempt communication
+            let retryRequest = false;
+            for(const tab of matchingTabs) {
+                console.log("===========TAB")
 
-            // Perform ping and check whether tab responds
-            const pingResponse = await sendRequestContent(tab.id as number, pingRequest);
-            if(pingResponse.result === "error") { // Failed to communicate with tab
-                extensionLog(loggingSelf, `Error pinging content script: ${pingResponse.payload.value}`);
+                extensionLog(loggingSelf, `Attempting to ping tab with ID ${tab.id} and URL ${tab.url}`);
 
+                // Perform ping and check whether tab responds
+                const pingResponse = await sendRequestContent(tab.id as number, pingRequest);
+                console.log("PING RESPONSE");
+                console.log(JSON.stringify(pingResponse));
+                if(pingResponse.result === "error") { // Failed to communicate with tab
+                    console.log("TAB NO GOOD")
+                    extensionLog(loggingSelf, `Error pinging content script: ${pingResponse.payload.value}`);
+
+                    continue;
+                }
+
+                extensionLog(loggingSelf, `Received successful ping response, broadcasting request`);
+
+                // Tab properly responded to ping, send actual request
+                const request: BroadcastedRequest = {
+                    handler: queuedRequest.handler,
+                    args: queuedRequest.args,
+                }; // Mirror request from queued parameters
+                const response = await sendRequestContent(tab.id as number, request);
+                console.log("BB RESPONSE");
+                console.log(response);
+                if(response.result === "error") { // Failed to communicate with tab
+                    // Should never happen since ping was successful
+                    throw new Error(`error performing handler: ${response}`)
+                }
+                queuedResponse.result = "ok";
+                queuedResponse.payload = response.payload;
+
+                // Check whether tab responded with request for execution
+                if(response.payload.execute !== undefined) {
+                    extensionLog(loggingSelf, `Response received, performing execution handlers ${response.payload.execute}`);
+
+                    if(response.payload.execute.includes("reload")) {
+                        extensionLog(loggingSelf, `Executing reload for tab with ID ${tab.id}`);
+
+                        // Reload current tab, idle until reloading complete (ping successful)
+                        await browser.tabs.reload(tab.id as number);
+                        await sleep(2500); // Give a few seconds for the reload to initialize
+                        await pingTabReady(tab.id as number, 100);
+                    }
+                    if(response.payload.execute.includes("retry")) {
+                        extensionLog(loggingSelf, `Executing retry, re-pushing request to back of queue`);
+
+                        // Push queued request to back for retry
+                        queuedRequests.push(queuedRequest);
+
+                        retryRequest = true;
+                    }
+                } else {
+                    extensionLog(loggingSelf, `Response received, no execution handler necessary`);
+                }
+
+                break; // Stop sending requests after successful
+            }
+
+            // Moved retry handler down since JS/TS doesn't have goto
+            if(retryRequest === true) {
                 continue;
             }
 
-            extensionLog(loggingSelf, `Received successful ping response, broadcasting request`);
+            const serializedResponse = JSON.stringify(queuedResponse);
+            extensionLog(loggingSelf, `Finished processing queued request, responding with body ${serializedResponse}`);
 
-            // Tab properly responded to ping, send actual request
-            const request: BroadcastedRequest = {
-                handler: queuedRequest.handler,
-                args: queuedRequest.args,
-            }; // Mirror request from queued parameters
-            const response = await sendRequestContent(tab.id as number, request);
-            if(response.result === "error") { // Failed to communicate with tab
-                // Should never happen since ping was successful
-                throw new Error(`error performing handler: ${response}`)
-            }
-            queuedResponse.result = "ok";
-            queuedResponse.payload = response.payload;
-
-            // Check whether tab responded with request for execution
-            if(response.payload.execute !== undefined) {
-                extensionLog(loggingSelf, `Response received, performing execution handlers ${response.payload.execute}`);
-
-                if(response.payload.execute.includes("reload")) {
-                    extensionLog(loggingSelf, `Executing reload for tab with ID ${tab.id}`);
-
-                    // Reload current tab, idle until reloading complete (ping successful)
-                    await browser.tabs.reload(tab.id as number);
-                    await sleep(2500); // Give a few seconds for the reload to initialize
-                    await pingTabReady(tab.id as number, 100);
-                }
-                if(response.payload.execute.includes("retry")) {
-                    extensionLog(loggingSelf, `Executing retry, re-pushing request to back of queue`);
-
-                    // Push queued request to back for retry
-                    queuedRequests.push(queuedRequest);
-
-                    retryRequest = true;
-                }
-            } else {
-                extensionLog(loggingSelf, `Response received, no execution handler necessary`);
-            }
-
-            break; // Stop sending requests after successful
+            // Resolve with either payload or not found
+            queuedRequest.resolve(queuedResponse);
         }
+    } catch(err) {
+        // Does the below still run? idk
+        executing = false; 
 
-        // Moved retry handler down since JS/TS doesn't have goto
-        if(retryRequest === true) {
-            continue;
-        }
-
-        const serializedResponse = JSON.stringify(queuedResponse);
-        extensionLog(loggingSelf, `Finished processing queued request, responding with body ${serializedResponse}`);
-
-        // Resolve with either payload or not found
-        queuedRequest.resolve(queuedResponse);
+        throw err;
     }
 
     executing = false; // Unlock running instance
@@ -191,7 +206,7 @@ export async function createTabReady(url: string, wait: boolean = true) {
     
     // Only wait for load complete if desired
     if(wait === true) {
-        await pingTabReady(tab.id as number, get(settings.store)["global"]["pollingInerval"] as number);
+        await pingTabReady(tab.id as number, 100);
     }
 }
 
