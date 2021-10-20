@@ -1,9 +1,9 @@
 <script lang="ts">
+    import { get } from "svelte/store";
     import InputValue from "../components/InputValue.svelte";
     import { extensionSelf, settingsDisplays } from "../../shared/constants";
+    import { settings } from "../../shared/initializations";
     import { extensionLog } from "../../shared/utilities";
-    import { get } from "svelte/store";
-    import { settings } from "../../shared/constants";
 
     const self = extensionSelf;
 

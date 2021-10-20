@@ -1,6 +1,6 @@
 import { get } from "../../node_modules/svelte/store";
 import { bestBuyDisplays } from "../shared/constants";
-import { bestBuyQueues, settings } from "../shared/constants";
+import { bestBuyQueues, settings } from "../shared/initializations";
 import type { BestBuyClientQueueData, BestBuySKUQueuesData, ProductQueueData } from "../shared/types";
 import type { BroadcastedRequest } from "../shared/types";
 import { bestBuyDecodeQueue, extensionLog, minutesSeconds } from "../shared/utilities";

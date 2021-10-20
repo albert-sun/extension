@@ -1,6 +1,7 @@
 import { get } from "svelte/store";
 import { settingsDisplays } from "../shared/constants";
-import { domainMatches, pingRequest, settings } from "../shared/constants";
+import { domainMatches, pingRequest } from "../shared/constants";
+import { settings } from "../shared/initializations";
 import type { SettingsCategory } from "../shared/types";
 import type { BroadcastedRequest, BroadcastedResponse, SyncRequest } from "../shared/types";
 import { extensionLog, pingTabReady, sendRequestContent, sleep } from "../shared/utilities";
@@ -65,7 +66,7 @@ async function performSyncRequests() {
     }
     executing = true; // Lock running instance
 
-    // In case of critical error, still be able to close execution
+    // In case of critical error, still be able to cancel execution
     try {
         // Perform queued requests sync while they exist, and resolve each
         while(queuedRequests.length > 0) {
@@ -100,16 +101,11 @@ async function performSyncRequests() {
             // Iterate over tabs and attempt communication
             let retryRequest = false;
             for(const tab of matchingTabs) {
-                console.log("===========TAB")
-
                 extensionLog(loggingSelf, `Attempting to ping tab with ID ${tab.id} and URL ${tab.url}`);
 
                 // Perform ping and check whether tab responds
                 const pingResponse = await sendRequestContent(tab.id as number, pingRequest);
-                console.log("PING RESPONSE");
-                console.log(JSON.stringify(pingResponse));
                 if(pingResponse.result === "error") { // Failed to communicate with tab
-                    console.log("TAB NO GOOD")
                     extensionLog(loggingSelf, `Error pinging content script: ${pingResponse.payload.value}`);
 
                     continue;
@@ -123,8 +119,6 @@ async function performSyncRequests() {
                     args: queuedRequest.args,
                 }; // Mirror request from queued parameters
                 const response = await sendRequestContent(tab.id as number, request);
-                console.log("BB RESPONSE");
-                console.log(response);
                 if(response.result === "error") { // Failed to communicate with tab
                     // Should never happen since ping was successful
                     throw new Error(`error performing handler: ${response}`)

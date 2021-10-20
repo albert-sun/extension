@@ -67,9 +67,6 @@ export async function contentPing(): Promise<BroadcastedResponse> {
 export function messageProcessHandlers(contentKey: string, handlers: MessageHandlers) {
     // Setup listener for snooping messages and executing matching handlers
     browser.runtime.onMessage.addListener(async (message, sender) => {
-        console.log("<= received")
-        console.log(message);
-
         const request = message as BroadcastedRequest;
         let response: BroadcastedResponse = { 
             result: "ok", 
@@ -89,9 +86,6 @@ export function messageProcessHandlers(contentKey: string, handlers: MessageHand
                 const payload = await handler(...request.args || []);
                 response.result = "ok";
                 response.payload = payload; // Non-serialized
-
-                console.log("== return")
-                console.log(response)
             } catch(error) {
                 const errorMessage = (error as Error).message;
                 response.result = "error";
@@ -113,9 +107,6 @@ export function messageProcessHandlers(contentKey: string, handlers: MessageHand
 export async function sendRequestBackground(
     request: BroadcastedRequest,
 ): Promise<BroadcastedResponse> {
-    console.log("=> sent")
-    console.log(request);
-
     return await new Promise((resolve) => {
         browser.runtime.sendMessage(request)
             .then(response => resolve(response as BroadcastedResponse)) // Successful
@@ -137,22 +128,13 @@ export async function sendRequestContent(
     return await new Promise((resolve) => {
         browser.tabs.sendMessage(tabId, request)
             .then(response => resolve(response as BroadcastedResponse)) // Successful
-            .catch(error => { 
-                console.log({
-                    result: "error",
-                    payload: {
-                        value: (error as Error).message,
-                        execute: [],
-                    },
-                });
-                resolve({
-                    result: "error",
-                    payload: {
-                        value: (error as Error).message,
-                        execute: [],
-                    },
-                })
-            }); // Failed, probably no message link
+            .catch(error => resolve({
+                result: "error",
+                payload: {
+                    value: (error as Error).message,
+                    execute: [],
+                },
+            })); // Failed, probably no message link
     });
 }
 

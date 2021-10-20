@@ -1,12 +1,9 @@
 import { writable } from "../../node_modules/svelte/store";
-import type { BestBuyQueuesData, BroadcastedRequest, ChangelogVersion, DomainMatches, RawAccordionData, SettingLabels, Settings } from "./types";
-import type { WritableWrapper } from "./types";
-import { initializeStore, reduceDisplays } from "./utilities";
+import type { BroadcastedRequest, ChangelogVersion, DomainMatches, RawAccordionData, SettingLabels, Settings } from "./types";
+import { reduceDisplays } from "./utilities";
 
 // Declare shared stores, NOTE that they can only be shared within the same context!
 export const tabURLs = writable([] as string[]); // tab URLs shared between components
-export const settings: WritableWrapper<Settings> = await initializeStore<Settings>( "settings", {});
-export const bestBuyQueues: WritableWrapper<BestBuyQueuesData> = await initializeStore<BestBuyQueuesData>( "bestbuy-queues", {});
 
 // Aggregate self-identification keys
 export const backgroundSelf = "background";
@@ -23,6 +20,17 @@ export const pingRequest: BroadcastedRequest = {
 
 // Changelog for display purposes, most recent to oldest
 export const changelogs: ChangelogVersion[] = [
+    {
+        display: "Version 1.3.0",
+        bullets: [
+            "Another complete code refactor - moved Svelte files into individual TS files"
+                + "linked through a Svelte file for using writables and stuff",
+            "Fixed queues not actually replacing when either moving from multiple to single queue, "
+                + "or new queue being better and thus should overwrite old queue",
+            "Fixed excessive pings to browser because of undefined setting (set to 100ms instead)",
+            "Added exception handling just in case extension hangs if synchronous requests error out",
+        ]
+    },
     {
         display: "Version 1.2.0",
         bullets: [
