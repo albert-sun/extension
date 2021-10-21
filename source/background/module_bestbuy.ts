@@ -1,6 +1,5 @@
 import { get } from "../../node_modules/svelte/store";
-import { bestBuyDisplays } from "../shared/constants";
-import { bestBuyQueues, settings } from "../shared/initializations";
+import { bestBuyDisplays, bestBuyQueues, settings } from "../shared/initializations";
 import type { BestBuyClientQueueData, BestBuySKUQueuesData, ProductQueueData } from "../shared/types";
 import type { BroadcastedRequest } from "../shared/types";
 import { bestBuyDecodeQueue, extensionLog, minutesSeconds } from "../shared/utilities";
@@ -106,6 +105,45 @@ export function setupBestBuyRequestHandlers() {
         // Delete cached body with request ID to prevent memory leaks
         delete requestBodyCache[details.requestId];
     }, { urls: ["*://*.bestbuy.com/cart/api/v1/addToCart"]}, ["responseHeaders", "blocking"]);
+}
+
+// Setup period interval for automatically adding and trimming queues
+export function setupBestBuyInterval() {
+    const blacklisted: Set<string> = new Set(); // Failed queues to ignore for automatic adding
+    setInterval(async function() {
+        // Iterate over SKU data and individual queues within checking for readiness
+        const currentTime = new Date().getTime(); // In milliseconds from epoch
+        for(const [sku, skuQueueData] of Object.entries(get(bestBuyQueues.store))) {
+            for(const [a2cTransactionReferenceId, queueData] of Object.entries(skuQueueData)) {
+                // Check whether queue popped, if so broadcast both add-to-cart and deletion
+                const remainingTime = queueData.startTime + queueData.queueTime - currentTime;
+                if(remainingTime <= 0) {
+                    // Only add and notify if not expired, otherwise silently delete
+                    if(remainingTime > -5 * 60 * 1000) {
+                        // Check whether setting to auto-add is enabled before proceeding
+                        if(get(settings.store)["bestbuy"]["autoAddQueue"] === true && blacklisted.has(queueData.a2cTransactionReferenceId) === false) {
+                            extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, broadcasting add-to-cart request`);
+                        
+                            // Add blacklist so queue isn't re-executed, other handler deals with retrying
+                            blacklisted.add(queueData.a2cTransactionReferenceId);
+                            // Process add-to-cart sequentially with other requests
+                            await processAddToCart(sku, queueData.a2cTransactionReferenceId, queueData.a2cTransactionCode);
+                        } else {
+                            extensionLog("background-bestbuy", `Queue popped for SKU ${sku}, waiting for manual because of setting`);
+                        }
+                    } else {
+                        extensionLog("background-bestbuy", `Queue popped but expired for ${sku}, silently deleting`);
+                    
+                        // Remove from set of blacklisted if found
+                        blacklisted.delete(queueData.a2cTransactionReferenceId);
+                        // Perform deletion using custom logic
+                        delete skuQueueData[a2cTransactionReferenceId];
+                        bestBuyQueues.set(sku, skuQueueData);
+                    }
+                }
+            }
+        }
+    }, 100);
 }
 
 // Update and replace queues for given existing queues, keeping the shortest

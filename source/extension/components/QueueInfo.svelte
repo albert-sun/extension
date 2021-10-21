@@ -1,6 +1,6 @@
 <script lang="ts">
     import Button from "./Button.svelte";
-    import { bestBuyDisplays } from "../../shared/constants";
+    import { bestBuyDisplays } from "../../shared/initializations";
     import type { ProductQueueData } from "../../shared/types";
     import { extensionLog, minutesSeconds, openPage, sendRequestBackground } from "../../shared/utilities";
     import type { BroadcastedRequest } from "../../shared/types";

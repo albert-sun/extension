@@ -1,0 +1,62 @@
+[
+    {
+        "display": "Version 1.3.2",
+        "bullets": [
+            "Transferred most statically-loaded resources to JSON files including changelogs, product data, and settings"
+        ]
+    },
+    {
+        "display": "Version 1.3.1",
+        "bullets": [
+            "Re-added background polling interval for Best Buy queues that I forgot about when re-coding"
+        ]
+    },
+    {
+        "display": "Version 1.3.0",
+        "bullets": [
+            "Another complete code refactor - moved Svelte files into individual TS files linked through a Svelte file for using writables and stuff",
+            "Fixed queues not actually replacing when either moving from multiple to single queue, or new queue being better and thus should overwrite old queue",
+            "Fixed excessive pings to browser because of undefined setting (set to 100ms instead)",
+            "Added exception handling just in case extension hangs if synchronous requests error out"
+        ]
+    },
+    {
+        "display": "Version 1.2.0",
+        "bullets": [
+            "Re-factor of background script, content scripts, and extension front-end to implement sequential handler execution and other features",
+            "Implemented auto-reload with setting whenever 403/500 response received",
+            "Implemented iterating over multiple tabs for sending requests - while executed once, each tab is pinged beforehand to ensure execution",
+            "Added new notification sounds and expanded notifications for different events",
+            "Added automatically opening tab with setting on execution when script not detected",
+            "Added option to disable notification sounds for all events (separate from popups)",
+            "Changed the way notification sounds are played so that they can overlap ",
+            "Fixed settings tab either not working or behaving strangely (buttons not working, certain settings not saving, etc.)",
+            "Aggregated background scripts into a single script because I thought they couldn't communicate to each other through the runtime.sendMessage API, but apparently the issue was something else. Doing some testing to check whether I'm good to separate them again in future versions for code clarity",
+            "Somewhat cleaned up code and aggregated utilities because of tree shaking"
+        ]
+    },
+    {
+        "display": "Version 1.1.1",
+        "bullets": [
+            "Fixed changelog spacing, noone probably even noticed the issue though"
+        ]
+    },
+    {
+        "display": "Version 1.1.0",
+        "bullets": [
+            "Fixed default settings not properly applying and instead showing 0/false/\"\"/etc.",
+            "Reworked names and descriptions for some settings, please double-check to ensure they look good",
+            "Best Buy: Removed automatically retrying failed automatic requests, should manually perform instead",
+            "Best Buy: Added many Chrome notifications and sound effects for events like failed carting, queue interception, and rate limit. Notification sounds suck though, please send me recommendations!"
+        ]
+    },
+    {
+        "display": "Version 1.0.0 (Initial re-release)",
+        "bullets": [
+            "Completely re-developed the extension from scratch using Svelte",
+            "Manfiest version downgraded from V3 to V2 for persistent background pages",
+            "Best Buy: Background script automatically intercepts and tracks queues",
+            "Best Buy: Implemented manual add-to-cart and automatic/manual queue carting"
+        ]
+    }
+]

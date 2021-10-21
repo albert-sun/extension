@@ -12,6 +12,7 @@
     onMount(async function() {        
         await mergeSettings(); // Merge settings with display values
         setupBestBuyRequestHandlers(); // Setup ATC webRequest interception handlers
+        setupBestBuyInterval(); // Setup interval for automatically ATCing and trimming
 
         // Register Messages API listener for processing handlers
         const messageHandlers: MessageHandlers = {

@@ -1,7 +1,6 @@
 import { get } from "svelte/store";
-import { settingsDisplays } from "../shared/constants";
 import { domainMatches, pingRequest } from "../shared/constants";
-import { settings } from "../shared/initializations";
+import { settings, settingsDisplays } from "../shared/initializations";
 import type { SettingsCategory } from "../shared/types";
 import type { BroadcastedRequest, BroadcastedResponse, SyncRequest } from "../shared/types";
 import { extensionLog, pingTabReady, sendRequestContent, sleep } from "../shared/utilities";

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { tabURLs } from "../../shared/constants";
+    import { tabURLs } from "../../shared/initializations";
 
     // Maintain URLs for currently opened tabs and update when needed
     let tabMappings: { [tabId: number]: string | undefined } = {};
