@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import type { MessageHandlers } from "../shared/types";
     import { messageProcessHandlers } from "../shared/utilities";
-    import { mergeProductQueues, processAddToCart, setupBestBuyRequestHandlers } from "./module_bestbuy";
+    import { mergeProductQueues, processAddToCart, setupBestBuyInterval, setupBestBuyRequestHandlers } from "./module_bestbuy";
     import { addSyncRequest, createTabReady, mergeSettings, soundNotification } from "./module_main";
 
     // Initialize writables beforehand to prevent errors
