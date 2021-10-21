@@ -1,0 +1,27 @@
+{
+    "bstock-30": {
+      "display": "[B-Stock] GeForce 30 Series Family",
+      "items": [
+        {
+          "display": "(12G-P5-3655-RX) EVGA GeForce RTX 3060 XC BLACK GAMING",
+          "data": ["12G-P5-3655-RX", 0, 1]
+        },
+        {
+          "display": "(12G-P5-3657-RX) EVGA GeForce RTX 3060 XC GAMING",
+          "data": ["12G-P5-3657-RX", 0, 2]
+        },
+        {
+          "display": "(08G-P5-3663-RX) EVGA GeForce RTX 3060 Ti XC GAMING",
+          "data": ["08G-P5-3663-RX", 0, 3]
+        },
+        {
+          "display": "(08G-P5-3667-RX) EVGA GeForce RTX 3060 Ti FTW3 ULTRA GAMING",
+          "data": ["08G-P5-3667-RX", 0, 4]
+        },
+        {
+          "display": "(08G-P5-3751-RX) EVGA GeForce RTX 3070 XC3 BLACK GAMING",
+          "data": ["08G-P5-3751-RX", 0, 5]
+        }
+      ]
+    }
+  }
