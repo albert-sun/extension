@@ -5,7 +5,7 @@
     import Button from "../components/Button.svelte";
     import QueueInfo from "../components/QueueInfo.svelte";
     import TabHeader from "../components/TabHeader.svelte";
-    import { bestBuyDisplays, rawBestBuyItems } from "../../shared/constants";
+    import { bestBuyDisplays, rawBestBuyItems } from "../../shared/initializations";
     import { bestBuyQueues, settings } from "../../shared/initializations";
     import type { AccordionData, AccordionItemData, BroadcastedRequest } from "../../shared/types";
     import { extensionLog, sendRequestBackground } from "../../shared/utilities";

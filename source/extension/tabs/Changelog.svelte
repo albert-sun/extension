@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { changelogs } from "../../shared/constants";
+    import { changelogs } from "../../shared/initializations";
 </script>
 
 <div class="flex-column column-spacing-large content">

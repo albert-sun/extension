@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { tabURLs } from "../../shared/constants";
+    import { tabURLs } from "../../shared/initializations";
     import { urlGlob } from "../../shared/utilities";
 
     export let urlMatch: string;  // [INPUT] URL match to check open tabs for
