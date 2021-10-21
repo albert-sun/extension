@@ -1,6 +1,6 @@
 [
     {
-        "display": "Version 1.3.1",
+        "display": "Version 1.3.2",
         "bullets": [
             "Transferred most statically-loaded resources to JSON files including changelogs, product data, and settings"
         ]
