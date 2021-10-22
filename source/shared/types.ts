@@ -28,6 +28,21 @@ export interface SyncRequest extends BroadcastedRequest {
     resolve:  Function; // Idle until resolution
 };
 
+// Navigation selectable item with display, key, and component
+export interface NavigationItem {
+    display: string;
+    key: string;
+    component: typeof SvelteComponent;
+};
+
+// Stores category data for an accordion
+export interface AccordionCategoryData {
+    display: string;
+    key: string;
+    data: { [index: string]: AccordionItemData };
+};
+export interface AccordionItemData {};
+
 // Raw data for accordion generation within constants.ts
 export interface RawAccordionData {
     [categoryKey: string]: RawAccordionCategoryData;
@@ -107,6 +122,20 @@ export interface ProductQueueData {
 // [startTime, a2cTransactionID, a2cTransactionCode, ???]
 export interface BestBuyClientQueueData {
     [sku: string]: [number, string, string, boolean];
+};
+
+// Types for EVGA script
+export interface EVGATokenMetadata {
+    [name: string]: string;
+}; // CSRF token and page metadata
+export interface EVGAProductData {
+    display:       string;
+    shortened:     string; // Cut off after first comma
+    productNumber: string;
+    indexes:       [number, number]; // Category and product index
+}; // Individual product data for given page
+export interface EVGAFormTokens {
+    [name: string]: string;
 };
 
 /*

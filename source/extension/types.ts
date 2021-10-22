@@ -1,19 +1,4 @@
-import type { SvelteComponent } from "svelte";
 
-// Navigation selectable item with display, key, and component
-export interface NavigationItem {
-    display: string;
-    key: string;
-    component: typeof SvelteComponent;
-};
-
-// Stores category data for an accordion
-export interface AccordionCategoryData {
-    display: string;
-    key: string;
-    data: { [index: string]: AccordionItemData };
-};
-export interface AccordionItemData {};
 
 // Specialized category data for EVGA
 export interface EVGACategoryData extends AccordionCategoryData {
